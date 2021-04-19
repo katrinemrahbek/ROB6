@@ -6,7 +6,7 @@
 
 struct k_t *p1, *p2, *p3, *p4, *p5, *dk1, *dk2, *dk3;
 struct k_t *sensor1, *sensor2, *sensor3, *sender;
-unsigned int d1, d2, d3;
+float d1, d2, d3;
 
 Adafruit_MPU6050 mpu;
 
@@ -112,16 +112,19 @@ void t4()
     k_wait(dk1, 0);
     k_wait(dk2, 0);
     k_wait(dk3, 0);
-
-    Serial.write(d1);
+    
+    byte * b6 = (byte *) &d1;
+    Serial.write(b6, 4);
     k_signal(dk1);
 
     Serial.write(0x20);
-    Serial.write(d2);
+    byte * b4 = (byte *) &d2;
+    Serial.write(b4, 4);
     k_signal(dk2);
 
     Serial.write(0x20);
-    Serial.write(d3);
+    byte * b5 = (byte *) &d3;
+    Serial.write(b5, 4);
     k_signal(dk3);
 
     Serial.write(0x20);
