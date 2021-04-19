@@ -4,29 +4,21 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/pico_recorder.cpp" "/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/build/CMakeFiles/pico_recorder.dir/pico_recorder.cpp.o"
+  "/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/pico_recorder.cpp" "/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/build/CMakeFiles/pico_recorder.dir/pico_recorder.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # Preprocessor definitions for this target.
 set(CMAKE_TARGET_DEFINITIONS_CXX
-  "DISABLE_LIBUSB_1_0"
-  "DISABLE_PCAP"
-  "DISABLE_PNG"
-  "qh_QHpointer"
-  "vtkRenderingContext2D_AUTOINIT=1(vtkRenderingContextOpenGL2)"
-  "vtkRenderingCore_AUTOINIT=3(vtkInteractionStyle,vtkRenderingFreeType,vtkRenderingOpenGL2)"
+  "BOOST_ALL_NO_LIB"
+  "BOOST_ATOMIC_DYN_LINK"
+  "BOOST_FILESYSTEM_DYN_LINK"
+  "BOOST_THREAD_DYN_LINK"
   )
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "../include"
-  "/usr/include/vtk-7.1"
-  "/usr/include/freetype2"
-  "/usr/include/pcl-1.10"
-  "/usr/include/eigen3"
-  "/usr/include/ni"
-  "/usr/include/openni2"
   )
 
 # Targets to which this target links.
