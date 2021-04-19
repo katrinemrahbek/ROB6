@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
-project(PCL_ransac)
+project(PCL_RANSAC)
 find_package(PCL 1.10 REQUIRED)
 FIND_PACKAGE( Boost 1.71 REQUIRED COMPONENTS thread filesystem)
 include_directories(${PCL_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} include)

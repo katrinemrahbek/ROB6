@@ -378,7 +378,7 @@ objbase.h
 windows.h
 -
 
-/home/clement/Desktop/6.sem/Project/PCL_project/PCL_ransac/PCL_ransac.cpp
+/home/clement/Desktop/6.sem/Project/ROB6/PCL_ransac/PCL_ransac.cpp
 string
 -
 iostream
@@ -420,7 +420,7 @@ pcl/segmentation/sac_segmentation.h
 pcl/filters/voxel_grid.h
 -
 royale.hpp
-/home/clement/Desktop/6.sem/Project/PCL_project/PCL_ransac/royale.hpp
+/home/clement/Desktop/6.sem/Project/ROB6/PCL_ransac/royale.hpp
 algorithm
 -
 iomanip
@@ -432,7 +432,7 @@ thread
 mutex
 -
 sample_utils/PlatformResources.hpp
-/home/clement/Desktop/6.sem/Project/PCL_project/PCL_ransac/sample_utils/PlatformResources.hpp
+/home/clement/Desktop/6.sem/Project/ROB6/PCL_ransac/sample_utils/PlatformResources.hpp
 
 /usr/include/eigen3/Eigen/Cholesky
 Core
