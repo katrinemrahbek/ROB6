@@ -390,7 +390,7 @@ objbase.h
 windows.h
 -
 
-/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/pico_recorder.cpp
+/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/pico_recorder.cpp
 iostream
 -
 thread
@@ -412,11 +412,11 @@ boost/filesystem.hpp
 boost/thread.hpp
 -
 royale.hpp
-/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/royale.hpp
+/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/royale.hpp
 royale/IPlaybackStopListener.hpp
-/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/royale/IPlaybackStopListener.hpp
+/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/royale/IPlaybackStopListener.hpp
 royale/IReplay.hpp
-/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/royale/IReplay.hpp
+/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/royale/IReplay.hpp
 sample_utils/PlatformResources.hpp
-/home/clement/Desktop/6.sem/Project/PCL_project/pico_recorder/sample_utils/PlatformResources.hpp
+/home/clement/Desktop/6.sem/Project/ROB6/pico_recorder/sample_utils/PlatformResources.hpp
 
