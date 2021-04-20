@@ -15,18 +15,22 @@
 #include "royale/IReplay.hpp"
 #include "sample_utils/PlatformResources.hpp"
 
+#include "ArduinoSensorReader.h"
+
+//globals to communicate and protect between threads
+Sensordata sensordata;
+bool hasArduinodata = false;
+std::mutex arduinoMut;
+std::mutex picoMut;
 
 class cameraListener : public royale::IDepthDataListener
 {
 public:
-	cameraListener() :
-		m_frameNumber(50), maxNumFrames(50), done(false)
+	cameraListener() : hasData(false)
 	{
 	}
-	uint32_t m_frameNumber; // The current frame number
-	uint32_t maxNumFrames;
-	std::string filePrefix;
-	bool done;
+	bool hasData;
+	royale::DepthData data;
 
 	void writePLY(const std::string &filename, const royale::DepthData *data)
 	{
@@ -71,38 +75,16 @@ public:
 
 	void onNewData(const royale::DepthData *data) override
 	{
-		if (m_frameNumber < maxNumFrames)
-		{
-			std::stringstream filename;
-
-			m_frameNumber++;
-
-			std::cout << "Exporting frame " << m_frameNumber << std::endl;
-			filename << filePrefix << "/" << m_frameNumber << ".ply";
-
-			writePLY(filename.str(), data);
-		}
-		else
-		{
-			done = true;
-		}
+		picoMut.lock();
+		this->data = *data;
+		hasData = true;
+		picoMut.unlock();
 	}
 };
 
-int main(int argc, char *argv[])
+int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 {
-	std::unique_ptr<cameraListener> listener;
-
-	// Royale's API treats the .rrf file as a camera, which it captures data from.
-	std::unique_ptr<royale::ICameraDevice> cameraDevice;
 	royale::CameraManager manager;
-
-	// if the file was loaded correctly the cameraDevice is now available
-	if (cameraDevice == nullptr)
-	{
-		std::cerr << "Cannot open camera " << std::endl;
-		return 1;
-	}
 
 	auto camlist = manager.getConnectedCameraList();
 	std::cout << "Detected " << camlist.size() << " camera(s)." << std::endl;
@@ -140,9 +122,9 @@ int main(int argc, char *argv[])
 		*/
 	royale::Vector<royale::String> useCases;
 	auto status = cameraDevice->getUseCases(useCases);
-	for (auto stat : useCases)
-		std::cout << stat << "\n";
-	std::cout << "\n";
+	//for (auto stat : useCases)
+	//	std::cout << stat << "\n";
+	//std::cout << "\n";
 
 	if (status != royale::CameraStatus::SUCCESS || useCases.empty())
 	{
@@ -162,7 +144,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	std::vector<int> exposures = {50, 100, 200, 300, 400, 500 };
 	if (cameraDevice->setExposureMode(royale::ExposureMode::MANUAL) != royale::CameraStatus::SUCCESS)
 	{
 		std::cout << "failed to set fixed exposure mode\n";
@@ -171,15 +152,60 @@ int main(int argc, char *argv[])
 	uint16_t maxFrameRate;
 	cameraDevice->getFrameRate(maxFrameRate);
 	std::cout << "framerate: " << maxFrameRate << "\n";
+	return 0;
+}
 
+void *arduino_thread_func(void *arg)
+{
+	ArduinoSensorReader* arduino  = (ArduinoSensorReader*)arg;
+	while(1)
+	{
+		arduino->update();
+		if(arduino->HasData())
+		{
+			arduinoMut.lock();
+			sensordata = arduino->GetSensorData();
+			hasArduinodata = true;
+			arduinoMut.unlock();
+		}
+		boost::this_thread::sleep(boost::posix_time::microseconds(1000));
+	}
+}
+
+int main(int argc, char *argv[])
+{
+	if(argc < 2)
+	{
+		std::cout << "give port for arduino as argument \n";
+		return 1;
+	}
+	ArduinoSensorReader arduino(argv[1]);
+	pthread_t arduino_thread;
+	auto create = pthread_create(&arduino_thread, NULL, arduino_thread_func, (void*) &arduino);
+	if(create != 0)
+	{
+		std::cout << "failed to create arduino thread? \n";
+	}
+	std::unique_ptr<cameraListener> listener;
+	std::shared_ptr<royale::ICameraDevice> cameraDevice;
+
+	auto result = setupCamera(cameraDevice);
+	if(result != 0)
+	{
+		std::cout << "failed to setup camera" << "\n";
+		return result;
+	}
 	// Create and register the data listener
 	listener.reset(new cameraListener());
+
 	if (cameraDevice->registerDataListener(listener.get()) != royale::CameraStatus::SUCCESS)
 	{
 		std::cerr << "Error registering data listener" << std::endl;
 		return 1;
 	}
 
+	std::vector<int> exposures = {50, 100, 200, 300, 400, 500 };
+	std::cout << "Starting to capture... \n";
 	for (auto exposure : exposures)
 	{
 		if (cameraDevice->setExposureTime(exposure) != royale::CameraStatus::SUCCESS)
@@ -191,9 +217,7 @@ int main(int argc, char *argv[])
 		{
 			std::cout << "recording with exposure: " << exposure << "\n";
 			std::string folderName = "exp_" + std::to_string(exposure);
-			listener->filePrefix = folderName;
-			listener->m_frameNumber = 0;
-			listener->done = false;
+
 			boost::filesystem::path dir(folderName);
 			if (!boost::filesystem::create_directory(dir))
 			{
@@ -205,10 +229,67 @@ int main(int argc, char *argv[])
 			{
 				std::cerr << "Error starting the capturing" << std::endl;
 				continue;
-			}
-			while (!listener->done)
+			}	
+
+			int n_frames = 1;
+			while (n_frames < 51)
 			{
-				boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+				arduinoMut.lock();
+				if(hasArduinodata)
+				{
+					auto arduinoData = arduino.GetSensorData();
+					hasArduinodata = false;
+					arduinoMut.unlock();
+					//std::cout << "got arduino data\n";
+					picoMut.lock();
+					royale::DepthData* picoData;
+					if(listener->hasData)
+					{
+						picoData = &listener->data;
+						listener->hasData = false;
+						picoMut.unlock();
+						//got the data, now save it as n.ply and n.txt
+						std::string plyName, txtName;
+						plyName = folderName + "/" + std::to_string(n_frames) + ".ply";
+						txtName = folderName + "/" + std::to_string(n_frames) + ".txt";
+						listener->writePLY(plyName, picoData);
+
+						std::ofstream outputFile;
+						std::stringstream stringstream;
+						outputFile.open(txtName, std::ofstream::out);
+						if (outputFile.fail())
+						{
+							std::cerr << "Outputfile " << txtName << " could not be opened!" << std::endl;
+							return 0;
+						}
+						else
+						{
+							// output stringstream to file and close it
+							stringstream << "#left, middle, right, roll, pitch, yaw\n";
+							for(int i = 0; i < 3; i++)
+								stringstream << std::to_string(arduinoData.sensor_readings[i]) << ",";
+							for(int i = 0; i < 3; i++)
+								stringstream << std::to_string(arduinoData.rpy[i]) << ",";
+							std::string log = stringstream.str();
+							std::cout << "log " << n_frames << " of 50: " << log << "\n";
+							log.pop_back();
+							outputFile << log;
+							outputFile.close();
+						}
+						n_frames ++;
+					}
+					else
+					{
+						picoMut.unlock();
+						boost::this_thread::sleep(boost::posix_time::microseconds(1000));
+						continue;
+					}
+				}
+				else
+				{
+					arduinoMut.unlock();
+					boost::this_thread::sleep(boost::posix_time::microseconds(1000));
+				}
 			}
 			if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
 			{
@@ -218,12 +299,11 @@ int main(int argc, char *argv[])
 	}
 	std::cout << "\n done with all recordings.\n";
 
-	// stop capture mode
+	// stop capture mode and end the program
 	if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
 	{
 		std::cerr << "Error stopping the capturing" << std::endl;
 		return 1;
 	}
-
 	return(0);
 }
