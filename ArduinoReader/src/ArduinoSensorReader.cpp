@@ -2,7 +2,7 @@
 
 using namespace std;
 
-ArduinoSensorReader::ArduinoSensorReader()
+ArduinoSensorReader::ArduinoSensorReader() : newdata(false)
 {
     serial_port = open("/dev/ttyACM3", O_RDWR);
     if (serial_port < 0) {
@@ -52,6 +52,7 @@ ArduinoSensorReader::ArduinoSensorReader()
     // Allocate memory for read buffer, set size according to your needs
     unsigned char read_buf [1];
     unsigned char message_buffer[256];
+    float temp_buffer[6];
     int buffer_index = -1;
     bool done_reading = false;
 
@@ -72,19 +73,42 @@ ArduinoSensorReader::ArduinoSensorReader()
             }
 
             if (done_reading) {
-                break;
+                for (int i = 0; i < 6; i++) {
+                    float * my_float = (float*)&message_buffer[1 + i*4];
+                    std::cout << *my_float << std::endl;
+                    temp_buffer[i] = *my_float;
+                }
+                robotData.sensor_readings[0] = temp_buffer[0];
+                robotData.sensor_readings[1] = temp_buffer[1];
+                robotData.sensor_readings[2] = temp_buffer[2];
+                robotData.rpy[0] = temp_buffer[3];
+                robotData.rpy[1] = temp_buffer[4];
+                robotData.rpy[2] = temp_buffer[5];
+
+                done_reading = false;
+                buffer_index = -1;
+                mu.lock();
+                newdata = true;
+                mu.unlock();
             }
         }
     }
-
-    for (int i = 0; i < 6; i++) {
-        float * my_float = (float*)&message_buffer[1 + i*4];
-        std::cout << *my_float << endl;
-    }
-
 }
 
 ArduinoSensorReader::~ArduinoSensorReader()
 {
     close(serial_port);
+}
+
+Sensordata ArduinoSensorReader::GetSensorData()
+{
+    mu.lock();
+    newdata = false;
+    mu.unlock();
+    return robotData;
+}
+
+bool ArduinoSensorReader::HasData()
+{
+    return newdata;
 }

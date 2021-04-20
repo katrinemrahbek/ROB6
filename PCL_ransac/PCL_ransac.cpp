@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <chrono>
@@ -329,8 +330,8 @@ int main(int argc, char** argv)
 {
 	pcl::console::setVerbosityLevel(pcl::console::L_ALWAYS);
 
-	std::cout << "reading data sets from: " << argv[1] << "\n";
-	std::string data_set_folder_path = argv[1];//"Data/dry_pvc_400/";
+	std::string data_set_folder_path = "../" + std::string(argv[1]); //"data/dry_pvc_400/";
+	std::cout << "reading data sets from: " << data_set_folder_path << "\n";
 
 	std::vector<std::string> files;
 	read_directory(data_set_folder_path, files);
@@ -338,17 +339,35 @@ int main(int argc, char** argv)
 
 	std::vector<test_result> test_results;
 	for(auto file : files)
-	{	
+	{			
 		std::string current_folder =  data_set_folder_path + "/" + file;
-		std::cout << "working on: " << current_folder << "\n";
-		auto tr = calcRadiusOnFolder(current_folder);
-		test_results.push_back(tr);
+		auto is_folder = boost::filesystem::is_directory(current_folder);
+		if(is_folder)
+		{
+			std::cout << "working on: " << current_folder << "\n";
+			auto tr = calcRadiusOnFolder(current_folder);
+			test_results.push_back(tr);
+		}
+		else
+		{
+			std::cout << "skipping: " << current_folder << " which is not a folder \n";
+		}
 	}
 
+	std::fstream f;
+	std::string resultFile = data_set_folder_path + "/results.txt";
+	std::cout << "saving results to: " << resultFile << "\n";
+	f.open(resultFile, std::ofstream::out | std::ofstream::trunc);
+	if(!f.is_open())
+	{
+		std::cout << "couldn't open file? \n";
+	}
 	for(auto r: test_results)
 	{
+		f << r.folder_name << ", r: " << r.radius << ", std_dev: " << r.std_dev << ", fps: " << r.fps << "\n";
 		std::cout << r.folder_name << ", r: " << r.radius << ", std_dev: " << r.std_dev << ", fps: " << r.fps << "\n";
 	}
+	f.close();
 
 	// no downsampling:
 	//running on ply_files
