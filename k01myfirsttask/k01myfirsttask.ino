@@ -1,14 +1,28 @@
 #include <krnl.h>
-
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps_V6_12.h"
 #include <Wire.h>
 
 struct k_t *p1, *p2, *p3, *p4, *p5, *dk1, *dk2, *dk3;
 struct k_t *sensor1, *sensor2, *sensor3, *sender;
 float d1, d2, d3;
 
-Adafruit_MPU6050 mpu;
+MPU6050 mpu;
+
+#define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
+bool blinkState = false;
+
+// MPU control/status vars
+uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
+uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
+uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
+uint16_t fifoCount;     // count of all bytes currently in FIFO
+uint8_t fifoBuffer[64]; // FIFO storage buffer
+
+// orientation/motion vars
+Quaternion q;           // [w, x, y, z]         quaternion container
+VectorFloat gravity;    // [x, y, z]            gravity vector
+float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 unsigned char data[4] = {};
 int sum;
@@ -105,60 +119,89 @@ void t4()
   digitalWrite(10, HIGH);
   while (1) {
     k_wait(sender, 0);
-    
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
 
-    k_wait(dk1, 0);
-    k_wait(dk2, 0);
-    k_wait(dk3, 0);
+    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet 
 
-    
-    Serial.write(0xff);
+      // display Euler angles in degrees
+      mpu.dmpGetQuaternion(&q, fifoBuffer);
+      mpu.dmpGetGravity(&gravity, &q);
+  
+      k_wait(dk1, 0);
+      k_wait(dk2, 0);
+      k_wait(dk3, 0);
+  
 
-    byte * b6 = (byte *) &d1;
-    Serial.write(b6, 4);
-    k_signal(dk1);
-
-    //Serial.write(0x20);
-    byte * b4 = (byte *) &d2;
-    Serial.write(b4, 4);
-    k_signal(dk2);
-
-    //Serial.write(0x20);
-    byte * b5 = (byte *) &d3;
-    Serial.write(b5, 4);
-    k_signal(dk3);
-
-    //Serial.write(0x20);
-    byte * b = (byte *) &g.gyro.x;
-    Serial.write(b, 4);
-    
-    //Serial.write(0x20);
-    byte * b2 = (byte *) &g.gyro.y;
-    Serial.write(b2, 4);
-    
-    //Serial.write(0x20);
-    byte * b3 = (byte *) &g.gyro.z;
-    Serial.write(b3, 4);
-
+      Serial.write(0xff);
+  
+      byte * b6 = (byte *) &d1;
+      Serial.write(b6, 4);
+      k_signal(dk1);
+  
+      //Serial.write(0x20);
+      byte * b4 = (byte *) &d2;
+      Serial.write(b4, 4);
+      k_signal(dk2);
+  
+      //Serial.write(0x20);
+      byte * b5 = (byte *) &d3;
+      Serial.write(b5, 4);
+      k_signal(dk3);
+  
+      //Serial.write(0x20);
+      byte * b = (byte *) &ypr[2];
+      Serial.write(b, 4);
+      
+      //Serial.write(0x20);
+      byte * b2 = (byte *) &ypr[1];
+      Serial.write(b2, 4);
+      
+      //Serial.write(0x20);
+      byte * b3 = (byte *) &ypr[0];
+      Serial.write(b3, 4);
+    }
   }
 }
 
 
 void setup()
 {
+  Wire.begin();
+  Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
   Serial.begin(115200);
-  if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
-    while (1) {
-      delay(10);
-    }
+  
+  mpu.initialize();
+
+  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+
+  devStatus = mpu.dmpInitialize();
+
+  mpu.setXGyroOffset(51);
+  mpu.setYGyroOffset(8);
+  mpu.setZGyroOffset(21);
+  mpu.setXAccelOffset(1150);
+  mpu.setYAccelOffset(-50);
+  mpu.setZAccelOffset(1060);
+  // make sure it worked (returns 0 if so)
+  if (devStatus == 0) {
+    // Calibration Time: generate offsets and calibrate our MPU6050
+    mpu.CalibrateAccel(6);
+    mpu.CalibrateGyro(6);
+    Serial.println();
+    mpu.PrintActiveOffsets();
+    // turn on the DMP, now that it's ready
+    Serial.println(F("Enabling DMP..."));
+    mpu.setDMPEnabled(true);
+
+    mpu.getIntStatus();
+    mpu.dmpGetFIFOPacketSize();
+  } else {
+    Serial.print(F("DMP Initialization failed (code "));
+    Serial.print(devStatus);
+    Serial.println(F(")"));
   }
 
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  // configure LED for output
+  pinMode(LED_PIN, OUTPUT);
 
 
   int res;
@@ -201,7 +244,7 @@ void setup()
   p3 = k_crt_task(t3, 4, 100); // t1 as task, priority 10, 100 B stak
   p4 = k_crt_task(t4, 1, 1000); // t1 as task, priority 10, 100 B stak
 
-  res = k_start(10); // 1 milli sec tick speed
+  res = k_start(1); // 1 milli sec tick speed
   // you will never return from k_start
   Serial.print("ups an error occured: "); Serial.println(res);
   while (1) ;
