@@ -112,34 +112,36 @@ void t4()
     k_wait(dk1, 0);
     k_wait(dk2, 0);
     k_wait(dk3, 0);
+
     
+    Serial.write(0xff);
+
     byte * b6 = (byte *) &d1;
     Serial.write(b6, 4);
     k_signal(dk1);
 
-    Serial.write(0x20);
+    //Serial.write(0x20);
     byte * b4 = (byte *) &d2;
     Serial.write(b4, 4);
     k_signal(dk2);
 
-    Serial.write(0x20);
+    //Serial.write(0x20);
     byte * b5 = (byte *) &d3;
     Serial.write(b5, 4);
     k_signal(dk3);
 
-    Serial.write(0x20);
+    //Serial.write(0x20);
     byte * b = (byte *) &g.gyro.x;
     Serial.write(b, 4);
     
-    Serial.write(0x20);
+    //Serial.write(0x20);
     byte * b2 = (byte *) &g.gyro.y;
     Serial.write(b2, 4);
     
-    Serial.write(0x20);
+    //Serial.write(0x20);
     byte * b3 = (byte *) &g.gyro.z;
     Serial.write(b3, 4);
 
-    Serial.write(0xff);
   }
 }
 
