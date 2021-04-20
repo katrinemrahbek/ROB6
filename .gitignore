@@ -1,0 +1,8 @@
+*.ply
+*.rrf
+*.vscode
+*.CMakeFiles
+*.cmake
+*.cpp.o
+*.o
+*.includecache
