@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+project(PICO_Recorder)
+FIND_PACKAGE( Boost 1.71 REQUIRED COMPONENTS thread filesystem)
+include_directories(${Boost_INCLUDE_DIR} include)
+link_directories(${Boost_LIBRARY_DIRS} bin)
+add_executable(pico_recorder pico_recorder.cpp)
+target_link_libraries(pico_recorder ${Boost_LIBRARIES} libroyale.so)
