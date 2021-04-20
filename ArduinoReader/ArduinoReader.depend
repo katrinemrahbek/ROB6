@@ -1,0 +1,19 @@
+# depslib dependency file v1.0
+1618903519 source:/home/hax/Desktop/ArduinoReader/main.cpp
+	<iostream>
+	"ArduinoSensorReader.h"
+
+1618907194 /home/hax/Desktop/ArduinoReader/include/ArduinoSensorReader.h
+	<stdio.h>
+	<string.h>
+	<fcntl.h>
+	<errno.h>
+	<termios.h>
+	<unistd.h>
+	<iostream>
+	<sstream>
+	<bitset>
+
+1618907055 source:/home/hax/Desktop/ArduinoReader/src/ArduinoSensorReader.cpp
+	"ArduinoSensorReader.h"
+
