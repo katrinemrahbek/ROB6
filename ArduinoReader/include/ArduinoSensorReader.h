@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 #include <bitset>
+#include <mutex>
 
 #ifndef ARDUINOSENSORREADER_H
 #define ARDUINOSENSORREADER_H
@@ -27,11 +28,16 @@ class ArduinoSensorReader
         ArduinoSensorReader();
         virtual ~ArduinoSensorReader();
 
+        Sensordata GetSensorData();
+        bool HasData();
+
     protected:
 
     private:
     int serial_port;
     Sensordata robotData;
+    bool newdata;
+    std::mutex mu;
 };
 
 #endif // ARDUINOSENSORREADER_H
