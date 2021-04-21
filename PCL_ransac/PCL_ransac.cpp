@@ -6,6 +6,7 @@
 #include <chrono>
 #include <boost/filesystem.hpp>
 #include <boost/thread/thread.hpp>
+#include <tuple>
 
 #include <pcl/common/common.h>
 #include <pcl/point_types.h>
@@ -34,6 +35,7 @@ using namespace sample_utils;
 
 #define VISUALIZE 0
 #define DOWNSAMPLE 0
+#define MAX_Z_DISTANCE 1.5
 
 typedef pcl::PointXYZRGB PointT;
 
@@ -41,6 +43,7 @@ typedef pcl::PointXYZRGB PointT;
 struct test_result
 {
 	std::vector<float> radi;
+	std::vector<float> mse;
 	std::string folder_name;
 	float radius;
 	float std_dev;
@@ -63,7 +66,7 @@ void read_directory(const std::string& name, std::vector<std::string> &v)
 	std::transform(start, end, std::back_inserter(v), path_leaf_string());
 }
 
-float calcRadius(pcl::PointCloud<PointT>::Ptr cloud)
+std::tuple<float, float> calcRadius(pcl::PointCloud<PointT>::Ptr cloud)
 {
 	pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
 	pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
@@ -128,7 +131,33 @@ float calcRadius(pcl::PointCloud<PointT>::Ptr cloud)
 	}
 #endif
 
-	return coefficients_cylinder->values[6];
+	float mse = 0;
+	for(auto point: cloud.get()->points)
+	{
+		Eigen::Vector3f pi;
+		pi[0] = point.x;
+		pi[1] = point.y;
+		pi[2] = point.z;
+		Eigen::Vector3f pstar;
+		pstar[0] = coefficients_cylinder->values[0];
+		pstar[1] = coefficients_cylinder->values[1];
+		pstar[2] = coefficients_cylinder->values[2];
+		Eigen::Vector3f a;
+		a[0] = coefficients_cylinder->values[3];
+		a[1] = coefficients_cylinder->values[4];
+		a[2] = coefficients_cylinder->values[5];
+
+		Eigen::Vector3f pi_m_pstar = pi-pstar;
+		float pi_m_pstar_dot_a = pi_m_pstar.dot(a);
+		Eigen::Vector3f pi_m_pstar_dot_a_mult_a = pi_m_pstar_dot_a * a;
+		Eigen::Vector3f vec = pi_m_pstar - pi_m_pstar_dot_a_mult_a;
+		float norm = vec.norm();
+		float deltaDist = norm - coefficients_cylinder->values[6];
+		mse += deltaDist*deltaDist;
+	}
+	mse /= (float)cloud->size();
+
+	return std::tuple<float,float> (coefficients_cylinder->values[6], mse);
 }
 
 //Corrected sample standard deviation
@@ -264,7 +293,9 @@ test_result calcRadiusOnFolder(std::string folder_path)
 	pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
 	pcl::PointCloud<PointT>::Ptr filtered_cloud(new pcl::PointCloud<PointT>);
 	std::vector<float> radi;
+	std::vector<float> mse;
 
+	std::sort(files.begin(), files.end(), [](std::string a, std::string b) {return a<b;});
 	auto timing_start = std::chrono::high_resolution_clock::now();
 	for (int i = 0; i < files.size(); i++)
 	{
@@ -294,17 +325,19 @@ test_result calcRadiusOnFolder(std::string folder_path)
 	#else
 		for (int i = 0; i < cloud->size(); i++)
 		{
-			if (cloud->at(i).z < 1.5 && cloud->at(i).z != 0)
+			if (cloud->at(i).z < MAX_Z_DISTANCE && cloud->at(i).z != 0)
 			{
 				cloud->at(i).r = 255;
 				cropped_cloud->push_back(cloud->at(i));
 			}
 		}
 		//std::cout << "cropped size: " << cropped_cloud->size() << ", ";
-		float radius = calcRadius(cropped_cloud);
+		auto radius_mse = calcRadius(cropped_cloud);
 	#endif
 		//std::cout << "Got radius: " << radius << std::endl;
-		radi.push_back(radius);
+		radi.push_back(std::get<0>(radius_mse));
+		mse.push_back(std::get<1>(radius_mse));
+
 	}
 	auto timing_stop = std::chrono::high_resolution_clock::now();
 
@@ -322,7 +355,7 @@ test_result calcRadiusOnFolder(std::string folder_path)
 	tr.std_dev= standard_dev;
 	tr.radius = avg_radius;
 	tr.folder_name = folder_path;
-
+	tr.mse = mse;
 	return tr;
 }
 
@@ -332,15 +365,22 @@ int main(int argc, char** argv)
 
 	std::vector<std::string> dataFolders;
 	read_directory("../data", dataFolders);
+	std::sort(dataFolders.begin(), dataFolders.end(), [](std::string a, std::string b) {return a<b;});
 	for(auto folder : dataFolders)
 	{
-		std::string data_set_folder_path = "../data/" + std::string(folder); //"data/dry_pvc_400/";
+		std::string data_set_folder_path = "../data/" + folder;
+		auto is_folder = boost::filesystem::is_directory(data_set_folder_path);
+		if(!is_folder)
+		{
+			std::cout << "skipping: " << data_set_folder_path << ", not a folder?\n";
+			continue;
+		}
+		//std::string data_set_folder_path = dataFolder; //"data/dry_pvc_400/";
 		std::cout << "reading data sets from: " << data_set_folder_path << "\n";
 
 		std::vector<std::string> files;
 		read_directory(data_set_folder_path, files);
 		std::sort(files.begin(), files.end(), [](std::string a, std::string b) {return a<b;});
-
 		std::vector<test_result> test_results;
 		for(auto file : files)
 		{			
@@ -359,7 +399,7 @@ int main(int argc, char** argv)
 		}
 
 		std::fstream f;
-		std::string resultFile = data_set_folder_path + "/results.txt";
+		std::string resultFile = data_set_folder_path + "/results_ransac.txt";
 		std::cout << "saving results to: " << resultFile << "\n";
 		f.open(resultFile, std::ofstream::out | std::ofstream::trunc);
 		if(!f.is_open())
@@ -371,8 +411,14 @@ int main(int argc, char** argv)
 			f << r.folder_name << ", r: " << r.radius << ", std_dev: " << r.std_dev << ", fps: " << r.fps << "\n";
 			std::cout << r.folder_name << ", r: " << r.radius << ", std_dev: " << r.std_dev << ", fps: " << r.fps << "\n";
 		}
+		for(auto r: test_results)
+		{
+			//std::cout << "radi, mse size: " << r.radi.size() << ", " << r.mse.size() << "\n";
+			f << "radius, mse from: " << r.folder_name << "\n";
+			for(int i = 0; i < r.radi.size(); i++)
+				f << r.radi[i] << ", " << r.mse[i] << "\n";
+		}
 		f.close();
-
 	}
 	// no downsampling:
 	//running on ply_files
