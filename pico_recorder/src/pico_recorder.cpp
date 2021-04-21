@@ -16,6 +16,7 @@
 #include "sample_utils/PlatformResources.hpp"
 
 #include "ArduinoSensorReader.h"
+#include "transform.h"
 
 //globals to communicate and protect between threads
 Sensordata sensordata;
@@ -87,18 +88,20 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 	royale::CameraManager manager;
 
 	auto camlist = manager.getConnectedCameraList();
-	std::cout << "Detected " << camlist.size() << " camera(s)." << std::endl;
+	//std::cout << "Detected " << camlist.size() << " camera(s)." << std::endl;
 	if (!camlist.empty())
 	{
 		std::cout << "CamID for first device: " << camlist.at(0).c_str() << " with a length of (" << camlist.at(0).length() << ")" << std::endl;
 		cameraDevice = manager.createCamera(camlist[0]);
 	}
+	//std::cout << "created camera\n";
 
 	if (cameraDevice == nullptr)
 	{
 		std::cerr << "Cannot create the camera device" << std::endl;
 		return 1;
 	}
+	//std::cout << "before initialize\n";
 
 	// IMPORTANT: call the initialize method before working with the camera device
 	if (cameraDevice->initialize() != royale::CameraStatus::SUCCESS)
@@ -106,6 +109,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 		std::cerr << "Cannot initialize the camera device" << std::endl;
 		return 1;
 	}
+	//std::cout << "after cam initialize\n";
 
 
 	/* available usecases from the pico flex
@@ -122,6 +126,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 		*/
 	royale::Vector<royale::String> useCases;
 	auto status = cameraDevice->getUseCases(useCases);
+	//std::cout << "got use cases\n";
 	//for (auto stat : useCases)
 	//	std::cout << stat << "\n";
 	//std::cout << "\n";
@@ -135,7 +140,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 
 	// choose a use case
 	auto selectedUseCaseIdx = 5u;
-	std::cout << "Choosing useCase " << selectedUseCaseIdx << "\n";
+	std::cout << "Choosing useCase " << useCases[selectedUseCaseIdx] << "\n";
 
 	// set an operation mode
 	if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
@@ -143,6 +148,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 		std::cerr << "Error setting use case" << std::endl;
 		return 1;
 	}
+	//std::cout << "before setexposuremode\n";
 
 	if (cameraDevice->setExposureMode(royale::ExposureMode::MANUAL) != royale::CameraStatus::SUCCESS)
 	{
@@ -151,7 +157,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice)
 	}
 	uint16_t maxFrameRate;
 	cameraDevice->getFrameRate(maxFrameRate);
-	std::cout << "framerate: " << maxFrameRate << "\n";
+	std::cout << "Framerate: " << maxFrameRate << "\n";
 	return 0;
 }
 
@@ -180,15 +186,26 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	ArduinoSensorReader arduino(argv[1]);
+	arduino.update();
 	pthread_t arduino_thread;
+	//std::cout << "before starting arduino thread\n";
 	auto create = pthread_create(&arduino_thread, NULL, arduino_thread_func, (void*) &arduino);
 	if(create != 0)
 	{
 		std::cout << "failed to create arduino thread? \n";
 	}
+	//std::cout << "after starting arduino thread\n";
+	//boost::this_thread::sleep(boost::posix_time::microseconds(10000000));
 	std::unique_ptr<cameraListener> listener;
 	std::shared_ptr<royale::ICameraDevice> cameraDevice;
-
+	//std::cout << "after pointer stuff\n";
+	float mm_to_meter = 1000.0; //mm to m
+	Transform camera(0,0,0,0,0,0);
+    Transform sonarRight(33.2/mm_to_meter, 33.0/mm_to_meter, 42.5/mm_to_meter, 0,0, 30.0*M_PI/180.0);
+    Transform sonarLeft(-22.0/mm_to_meter, 33.0/mm_to_meter, 42.5/mm_to_meter, 0,0, -30.0*M_PI/180.0);
+    Transform sonarMiddle(8.0/mm_to_meter, 60.0/mm_to_meter, 81.5/mm_to_meter, 0,0,0);
+    Transform IMU(-17.2/mm_to_meter, 6.0/mm_to_meter,64.0/mm_to_meter, 90.0*M_PI/180.0, 0, 0);
+	//std::cout << "before setupcamera\n";
 	auto result = setupCamera(cameraDevice);
 	if(result != 0)
 	{
@@ -196,6 +213,7 @@ int main(int argc, char *argv[])
 		return result;
 	}
 	// Create and register the data listener
+	//std::cout << "before listener.reset\n";
 	listener.reset(new cameraListener());
 
 	if (cameraDevice->registerDataListener(listener.get()) != royale::CameraStatus::SUCCESS)
@@ -221,7 +239,7 @@ int main(int argc, char *argv[])
 			boost::filesystem::path dir(folderName);
 			if (!boost::filesystem::create_directory(dir))
 			{
-				std::cout << "failed to create directory: " << folderName << "\n does it already exist? \n";
+				std::cout << "failed to create directory: " << folderName << " -does it already exist? \n";
 				continue;
 			}
 			// start capture mode
@@ -240,6 +258,12 @@ int main(int argc, char *argv[])
 					auto arduinoData = arduino.GetSensorData();
 					hasArduinodata = false;
 					arduinoMut.unlock();
+					for(int i = 0; i < 3; i++)
+						arduinoData.sensor_readings[i]=arduinoData.sensor_readings[i]/mm_to_meter;
+					Vector4f sonarReadings[3];
+					sonarReadings[0] = sonarRight.MeasurementTransform(arduinoData.sensor_readings[0]);
+					sonarReadings[1] = sonarMiddle.MeasurementTransform(arduinoData.sensor_readings[1]);
+					sonarReadings[2] = sonarLeft.MeasurementTransform(arduinoData.sensor_readings[2]);
 					//std::cout << "got arduino data\n";
 					picoMut.lock();
 					royale::DepthData* picoData;
@@ -252,6 +276,20 @@ int main(int argc, char *argv[])
 						std::string plyName, txtName;
 						plyName = folderName + "/" + std::to_string(n_frames) + ".ply";
 						txtName = folderName + "/" + std::to_string(n_frames) + ".txt";
+						std::cout << "size before pop: " << picoData->points.size() << "\n";
+						for(int i = 0; i < 3; i++)
+							picoData->points.pop_back();
+						std::cout << "size after pop: " << picoData->points.size() << "\n";
+						for(int i = 0; i < 3; i++)
+						{
+							royale::DepthPoint point;
+							point.x = sonarReadings[i][0];
+							point.y = sonarReadings[i][1];
+							point.z = sonarReadings[i][2];
+							std::cout << point.x << "," << point.y << "," <<point.z << "\n";
+							picoData->points.push_back(point);
+						}
+						std::cout << "size after push: " << picoData->points.size() << "\n";
 						listener->writePLY(plyName, picoData);
 
 						std::ofstream outputFile;
@@ -265,14 +303,23 @@ int main(int argc, char *argv[])
 						else
 						{
 							// output stringstream to file and close it
-							stringstream << "#left, middle, right, roll, pitch, yaw\n";
+							stringstream << "#right, middle, left, roll, pitch, yaw\n";
 							for(int i = 0; i < 3; i++)
 								stringstream << std::to_string(arduinoData.sensor_readings[i]) << ",";
 							for(int i = 0; i < 3; i++)
 								stringstream << std::to_string(arduinoData.rpy[i]) << ",";
+
+							stringstream << "\n";
+
+							stringstream << "#sonarRight: x,y,z\n";
+							stringstream << sonarReadings[0][0] << "," << sonarReadings[0][1] << ","<< sonarReadings[0][2] << "\n";
+							stringstream << "#sonarMiddle: x,y,z\n";
+							stringstream << sonarReadings[1][0] << "," << sonarReadings[1][1] << ","<< sonarReadings[1][2] << "\n";
+							stringstream << "#sonarLeft: x,y,z\n";
+							stringstream << sonarReadings[2][0] << "," << sonarReadings[2][1] << ","<< sonarReadings[2][2] << "\n";
+
 							std::string log = stringstream.str();
 							std::cout << "log " << n_frames << " of 50: " << log << "\n";
-							log.pop_back();
 							outputFile << log;
 							outputFile.close();
 						}
