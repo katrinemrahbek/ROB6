@@ -48,27 +48,30 @@ ArduinoSensorReader::ArduinoSensorReader(std::string portname) : newdata(false)
     }
 
     tcflush(serial_port,TCIOFLUSH);
-    int buffer_index = -1;
-    bool done_reading = false;
+    buffer_index = -1;
+    done_reading = false;
+    //std::cout << "arduino constructor done\n";
 }
 
 void ArduinoSensorReader::update()
 {
     int n = read(serial_port, &read_buf, sizeof(read_buf));
     if (n > 0) {
+        //std::cout << "Got " << n << " bytes from the arduino\n";
         if (read_buf[0] == 0xff && buffer_index == -1) {
             buffer_index = 0;
         }
-
+        //std::cout << "after first if\n";
         if (buffer_index > -1) {
+            //std::cout << "buffer_index: " << buffer_index << "\n";
             message_buffer[buffer_index] = read_buf[0];
             buffer_index++;
-
+            //std::cout << "in buffer index if\n";
             if (buffer_index > 24) {
                 done_reading = true;
             }
         }
-
+        //std::cout << "before done reading\n";
         if (done_reading) {
             for (int i = 0; i < 6; i++) {
                 float * my_float = (float*)&message_buffer[1 + i*4];

@@ -39,7 +39,7 @@ class ArduinoSensorReader
     Sensordata robotData;
     bool newdata;
     std::mutex mu;
-    unsigned char read_buf [1];
+    unsigned char read_buf [256];
     unsigned char message_buffer[256];
     float temp_buffer[6];
     int buffer_index;
