@@ -120,17 +120,18 @@ void t4()
   while (1) {
     k_wait(sender, 0);
 
-    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet 
-
+    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { 
+      
       // display Euler angles in degrees
+      
       mpu.dmpGetQuaternion(&q, fifoBuffer);
       mpu.dmpGetGravity(&gravity, &q);
+      mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
   
       k_wait(dk1, 0);
       k_wait(dk2, 0);
       k_wait(dk3, 0);
   
-
       Serial.write(0xff);
   
       byte * b6 = (byte *) &d1;
