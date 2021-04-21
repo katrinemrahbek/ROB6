@@ -18,22 +18,52 @@
 #include "ArduinoSensorReader.h"
 #include "transform.h"
 
+#include <pcl/common/common.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+
 //globals to communicate and protect between threads
 Sensordata sensordata;
 bool hasArduinodata = false;
 std::mutex arduinoMut;
 std::mutex picoMut;
 
+pcl::PointCloud<pcl::PointXYZI>::Ptr DepthDataToPCL(const royale::DepthData* data)
+{
+	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>());
+	cloud->height = data->height;
+	cloud->width = data->width;
+	//cloud.header.stamp = data->timeStamp;
+	
+	for (auto point : data->points)
+	{
+		pcl::PointXYZI p;
+		p.x = point.x;
+		p.y = point.y;
+		p.z = point.z;
+		p.intensity = point.grayValue;
+		if(p.z < 5.0)
+			cloud->push_back(p);
+	}
+	return cloud;
+}
+
 class cameraListener : public royale::IDepthDataListener
 {
 public:
-	cameraListener() : hasData(false)
-	{
-	}
 	bool hasData;
 	royale::DepthData data;
+	pcl::visualization::PCLVisualizer::Ptr viewer;
+	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud;
 
-	void writePLY(const std::string &filename, const royale::DepthData *data)
+	cameraListener() : hasData(false)
+	{
+		viewer = pcl::visualization::PCLVisualizer::Ptr(new pcl::visualization::PCLVisualizer("data viewer"));
+		viewer->addCoordinateSystem(0.1);
+		viewer->initCameraParameters();
+	}
+
+	void writePLY(const std::string &filename, royale::DepthData *data)
 	{
 		// For an explanation of the PLY file format please have a look at
 		// https://en.wikipedia.org/wiki/PLY_(file_format)
@@ -67,7 +97,6 @@ public:
 			{
 				stringStream << data->points.at(i).x << " " << data->points.at(i).y << " " << data->points.at(i).z << std::endl;
 			}
-
 			// output stringstream to file and close it
 			outputFile << stringStream.str();
 			outputFile.close();
@@ -76,10 +105,17 @@ public:
 
 	void onNewData(const royale::DepthData *data) override
 	{
+		//std::cout << "onnewdata\n";
 		picoMut.lock();
 		this->data = *data;
 		hasData = true;
 		picoMut.unlock();
+		
+		cloud = DepthDataToPCL(&this->data);
+		if (!viewer->updatePointCloud<pcl::PointXYZI>(cloud, "sample cloud"))
+					viewer->addPointCloud<pcl::PointXYZI>(cloud, "sample cloud");
+		viewer->spinOnce();
+		//std::cout << "onnewdata done\n";
 	}
 };
 
@@ -215,13 +251,11 @@ int main(int argc, char *argv[])
 	// Create and register the data listener
 	//std::cout << "before listener.reset\n";
 	listener.reset(new cameraListener());
-
 	if (cameraDevice->registerDataListener(listener.get()) != royale::CameraStatus::SUCCESS)
 	{
 		std::cerr << "Error registering data listener" << std::endl;
 		return 1;
 	}
-
 	std::vector<int> exposures = {50, 100, 200, 300, 400, 500 };
 	std::cout << "Starting to capture... \n";
 	for (auto exposure : exposures)
@@ -266,31 +300,22 @@ int main(int argc, char *argv[])
 					sonarReadings[2] = sonarLeft.MeasurementTransform(arduinoData.sensor_readings[2]);
 					//std::cout << "got arduino data\n";
 					picoMut.lock();
-					royale::DepthData* picoData;
 					if(listener->hasData)
 					{
-						picoData = &listener->data;
 						listener->hasData = false;
-						picoMut.unlock();
 						//got the data, now save it as n.ply and n.txt
 						std::string plyName, txtName;
 						plyName = folderName + "/" + std::to_string(n_frames) + ".ply";
 						txtName = folderName + "/" + std::to_string(n_frames) + ".txt";
-						std::cout << "size before pop: " << picoData->points.size() << "\n";
-						for(int i = 0; i < 3; i++)
-							picoData->points.pop_back();
-						std::cout << "size after pop: " << picoData->points.size() << "\n";
+
 						for(int i = 0; i < 3; i++)
 						{
-							royale::DepthPoint point;
-							point.x = sonarReadings[i][0];
-							point.y = sonarReadings[i][1];
-							point.z = sonarReadings[i][2];
-							std::cout << point.x << "," << point.y << "," <<point.z << "\n";
-							picoData->points.push_back(point);
+							(&listener->data)->points[(&listener->data)->points.size()-1-i].x = sonarReadings[i][0];
+							(&listener->data)->points[(&listener->data)->points.size()-1-i].y = sonarReadings[i][1];
+							(&listener->data)->points[(&listener->data)->points.size()-1-i].z = sonarReadings[i][2];
 						}
-						std::cout << "size after push: " << picoData->points.size() << "\n";
-						listener->writePLY(plyName, picoData);
+						listener->writePLY(plyName, (&listener->data));
+						picoMut.unlock();
 
 						std::ofstream outputFile;
 						std::stringstream stringstream;
