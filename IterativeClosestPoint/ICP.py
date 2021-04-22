@@ -6,6 +6,7 @@ import open3d as o3d
 import copy
 import os
 import time
+import copy
 
 
 def draw_registration_result(source, target, transformation): # draws the two point clouds in blue and yellow
@@ -18,13 +19,14 @@ def draw_registration_result(source, target, transformation): # draws the two po
 
 
 class dataContainer:
-    radiusList  = []
-    MSE = []
-    times = []
+    radiusList  = None
+    MSE = None
+    times = None
     meanRadius = 0.0
     folderName = ""
     fps  =  -1.0
     std_dev  = -1.0
+    exp = ""
     
 
 def save_data(data, pipe):
@@ -36,20 +38,18 @@ def save_data(data, pipe):
     # then all the radius' and MSE for each ply file:
     # data/beton200/exp_50
     # 0.1023, 0.012
-    mean_time = 0
-    for t in data.times:
-        mean_time += t/len(data.times)
-
-    data.fps = 1/mean_time
-    #data.std_dev = np.sqrt(1/len(data.radiusList)*sum(1,len(data.radiusList),)
-
-    f = open("data/" + pipe + "/result_ICP.txt", "w")
+    open("data/" + pipe + "/result_ICP.txt", "w").close()
+    f = open("data/" + pipe + "/result_ICP.txt", "a")
     print("jeg skriver til en fil nu")
-    f.write("data/" + str(pipe_folder) + "/" + str(exp_folder) +", r: " + str(data.meanRadius) + ", std_dev: " +str(data.std_dev) + ", fps: " + str(data.fps)+ "\n")
-    for i in range(0, len(data.radiusList)):
-        f.write(str(data.radiusList[i])+ ", " + str(data.MSE) + "\n")
+    for i, d in enumerate(data):
+        
+        f.write("data/" + str(pipe_folder) + "/" + str(d.exp) +", r: " + str(d.meanRadius) + ", std_dev: " +str(d.std_dev) + ", fps: " + str(d.fps)+ "\n")
+    for d in data:
+        f.write("data/" + str(pipe_folder) + "/" + str(d.exp) + "\n")
+        for i in range(0, len(d.radiusList)):
+            f.write(str(d.radiusList[i])+ ", " + str(d.MSE[i]) + "\n")
+    f.close()
 
-    pass
 
 class cylinder(): #cylinder class
     a = []
@@ -58,32 +58,33 @@ class cylinder(): #cylinder class
     #normalVector = []
 
 pipe_folders = os.listdir("data/")
-vector_data = []
-#print(pipe_folders)
+
 
 for pipe_folder in pipe_folders:
     exp_folders = os.listdir("data/" + str(pipe_folder))
     
     #print(exp_folders)
-
-    dataCollector = dataContainer()
-
-
+    vector_data = []
     for exp_folder in exp_folders:
-
-        if not os.path.isdir(exp_folder):
-            pass
-        print(exp_folder)
+        
+        dataCollector = dataContainer()
+        dataCollector.times = []
+        dataCollector.MSE = []
+        dataCollector.radiusList = []
+        if not os.path.isdir('data/' + pipe_folder + "/" +exp_folder):
+            print(str(exp_folder) + "er ikke et dir")
+            continue
+        #print(exp_folder)
 
 
         cyl = cylinder() # instance of cylinder
         radius = np.arange(0.1, 0.25, 0.01).tolist()  #make radius array with increments of 0.01
         averageRadius = 0.0
-        arr = os.listdir('data/' + pipe_folder+ "/" + exp_folder ) 
+        arr = os.listdir('data/' + pipe_folder + "/" + exp_folder) 
         
 
         print("data/" + pipe_folder + "/" + exp_folder)
-
+        time1 = time.time()
         for i in range (0,len(arr)):
             results = [] 
             results_cylinder_points = []
@@ -93,7 +94,7 @@ for pipe_folder in pipe_folders:
             bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound = (-1.0, -1.0 , 0.05), max_bound = (1.0,1.0,0.75)) # bounding box that crops data
             croppedpcd = pcd.crop(bbox)
             #downpcd = croppedpcd.voxel_down_sample(voxel_size=0.005) #downsample point cloud
-            time1 = time.time()
+            
             for i, rad in enumerate(radius):
                 
                 cyl.a = [0,rad/2.0,0]
@@ -124,29 +125,44 @@ for pipe_folder in pipe_folders:
                 results_cylinder_points.append(cylinder_points)
             
         
-            min_error = 20000000
+            min_error = 20000
             index = -1
             for i, res in enumerate(results): #figure out where minimum is and uses this as radius
                 #print(i, res.inlier_rmse)
                 if res.inlier_rmse < min_error:
                     min_error = res.inlier_rmse
                     index = i
-            time2 = time.time()
-            time3 = time2-time1
+
+            dataCollector.radiusList.append(radius[index])
+            dataCollector.MSE.append( res.inlier_rmse**2)
+            dataCollector.exp = (exp_folder)
+            averageRadius += radius[index]/len(arr)
+
 
             #print("index: " , index, " radius: ", radius[index], "diameter is ", radius[index]*2) # prints this and draws it 
 
-            dataCollector.radiusList.append(radius[index])
-            dataCollector.MSE = res.inlier_rmse**2
-            averageRadius += radius[index]/len(arr)
-
-        
 
         #draw_registration_result(results_cylinder_points[index], croppedpcd, results[index].transformation)
         print("average is = " + str(averageRadius))
         dataCollector.meanRadius = averageRadius
-        dataCollector.times.append(time3)
+        time2 = time.time()
+        time3 = time2-time1
+        #print("len(dataCollector.radiuslist): ",len(dataCollector.radiusList))
+        #print("len(dataCollector.mse): ",len(dataCollector.MSE))
+        #print("len(dataCollector.times): ",len(dataCollector.times))
+        #print(time3)
+        dataCollector.fps = len(arr)/time3
 
-        save_data(dataCollector, str(pipe_folder))
+        temp = 0
+        for r in dataCollector.radiusList:
+            temp += (r-dataCollector.meanRadius)**2
+        dataCollector.std_dev = np.sqrt(temp/(len(dataCollector.radiusList)-1))
+
+        vector_data.append(copy.deepcopy(dataCollector))
+        #print(len(vector_data[0].radiusList))
+
+    #print(len(vector_data[0].radiusList))   
+    #print("got ", len(vector_data) , " exposure folders")
+    save_data(vector_data, str(pipe_folder))
 
 
