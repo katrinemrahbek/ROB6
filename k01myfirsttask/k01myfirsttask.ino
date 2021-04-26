@@ -34,7 +34,7 @@ void t1()
     if (Serial1.read() == 0xff)
     {
       data[0] = 0xff;
-      for (int i = 0; i < 4; i++)
+      for (int i = 1; i < 4; i++)
       {
         data[i] = Serial1.read();
       }
