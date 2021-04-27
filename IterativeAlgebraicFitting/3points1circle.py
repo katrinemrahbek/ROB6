@@ -77,6 +77,9 @@ if __name__ == "__main__":
 
                         lines = f.readlines()
 
+                        if len(lines) < 7:
+                            continue
+
                         cutendl = lines[3].split("\n")
                         sensorRightString = cutendl[0].split(",")
                         for i in range(3):
