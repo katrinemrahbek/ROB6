@@ -59,6 +59,10 @@ if __name__ == "__main__":
 
     rootdir = "sensor_readings"
     radii = []
+    rightDepth = []
+    middleDepth = []
+    leftDepth = []
+    
 
     with open(rootdir+"/sonar_calculated_radius","w") as outf:
         for subdir, dirs, files in os.walk(rootdir):
@@ -69,6 +73,7 @@ if __name__ == "__main__":
                         sensorMiddle = []
                         sensorLeft = []
                         center = []
+                        sensorData = []
 
                         lines = f.readlines()
 
@@ -90,6 +95,15 @@ if __name__ == "__main__":
                         center, radius = define_circle(sensorRight,sensorMiddle,sensorLeft)
                         radii.append(radius)
 
+                        cutendl = lines[1].split("\n")
+                        sensorDataString = cutendl[0].split(",")
+                        for i in range(6):
+                            sensorData.append(float(sensorDataString[i]))
+                        rightDepth.append(sensorData[0])
+                        middleDepth.append(sensorData[1])
+                        leftDepth.append(sensorData[2])
+                        
+
         meanR = sum(r for r in radii)/len(radii)
         sumr = 0
         for j in range(len(radii)):
@@ -104,6 +118,14 @@ if __name__ == "__main__":
         for j in range(len(radii)):
             outf.write(str(radii[j])+"\n")
 
+    fig, (ax1, ax2,ax3) = plt.subplots(3, 1, sharey=True)
+    ax1.plot(rightDepth)
+    ax1.set_title('Right Depth')
+    ax2.plot(middleDepth)
+    ax2.set_title('Middle Depth')
+    ax3.plot(leftDepth)
+    ax3.set_title('Left Depth')
+    plt.show()
 
 
 
