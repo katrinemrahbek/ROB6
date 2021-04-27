@@ -1,9 +1,4 @@
 import numpy as np
-import open3d as o3d
-import time
-import os
-import matplotlib.pyplot as plt
-
 
 def preprocess(data):
     n = len(data)
@@ -88,18 +83,13 @@ def G(W, mu, F0, F1, F2, n):
     return error, rSQR, PC
 
 
-def CylinderFitting(subdir, file):
-    pcd = o3d.io.read_point_cloud(os.path.join(subdir, file))
-    '''pcd = pcd.voxel_down_sample(voxel_size=0.005)'''
-    bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(-1, -1, 0), max_bound=(1, 1, 1))
-    pcd = pcd.crop(bbox)
-    '''o3d.visualization.draw_geometries([pcd])'''
-    data = np.asarray(pcd.points)
-    preTime0 = time.time()
-    n, Xi, mu, F0, F1, F2, average = preprocess(data)
-    preTime1 = time.time()
+def CylinderFitting(data):
 
-    print("processingtime:", preTime1-preTime0)
+    '''o3d.visualization.draw_geometries([pcd])'''
+    n, Xi, mu, F0, F1, F2, average = preprocess(data)
+
+
+
     minError = float("inf")
     Res1 = 50
     Res2 = 50
@@ -126,39 +116,8 @@ def CylinderFitting(subdir, file):
 
     bestR = np.sqrt(bestR)
     C += average
-    return bestR
+    return bestR, minError
 
 
-if __name__ == '__main__':
 
-
-    rootdir = "C:/Users/olive/Desktop/Project 6/TestData/OneDrive/beton200/beton200"
-    fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, sharex='all', sharey='all')
-    plotData = []
-
-    for subdir, dirs, files in os.walk(rootdir):
-        radii = []
-        for k, file in enumerate(files):
-            print(k + 1, "out of", len(files) + 1)
-            r = CylinderFitting(subdir, file)
-            print("radius:", r)
-            radii.append(r)
-
-        if(len(radii) > 0):
-            plotData.append(radii)
-
-    ax1.plot(plotData[0])
-    ax2.plot(plotData[1])
-    ax3.plot(plotData[2])
-    ax4.plot(plotData[3])
-    ax5.plot(plotData[4])
-    ax6.plot(plotData[5])
-
-    ax1.set_title("exp 100")
-    ax2.set_title("exp 200")
-    ax3.set_title("exp 300")
-    ax4.set_title("exp 400")
-    ax5.set_title("exp 50")
-    ax6.set_title("exp 500")
-    plt.show()
 
