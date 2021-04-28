@@ -64,44 +64,49 @@ if __name__ == "__main__":
     leftDepth = []
     
 
-    with open(rootdir+"/sonar_calculated_radius","w") as outf:
+    with open("sonar_calculated_radius","w") as outf:
         for subdir, dirs, files in os.walk(rootdir):
             for k, file in enumerate(files):
-                if len(files) != k+1:
-                    with open(subdir+"/"+file) as f:
-                        sensorRight = []
-                        sensorMiddle = []
-                        sensorLeft = []
-                        center = []
-                        sensorData = []
+                if len(files) <= k:
+                    continue
+                with open(subdir+"/"+file) as f:
+                    lines = f.readlines()
+                    if len(lines) < 7 or not file.endswith(".txt"):
+                        print(file,"did not comply")
+                        continue
+                    #print("doing:",file)
 
-                        lines = f.readlines()
+                    sensorRight = []
+                    sensorMiddle = []
+                    sensorLeft = []
+                    center = []
+                    sensorData = []
 
-                        cutendl = lines[3].split("\n")
-                        sensorRightString = cutendl[0].split(",")
-                        for i in range(3):
-                            sensorRight.append(float(sensorRightString[i]))
+                    cutendl = lines[3].split("\n")
+                    sensorRightString = cutendl[0].split(",")
+                    for i in range(3):
+                        sensorRight.append(float(sensorRightString[i]))
 
-                        cutendl = lines[5].split("\n")
-                        sensorMiddleString = cutendl[0].split(",")
-                        for i in range(3):
-                            sensorMiddle.append(float(sensorMiddleString[i]))
+                    cutendl = lines[5].split("\n")
+                    sensorMiddleString = cutendl[0].split(",")
+                    for i in range(3):
+                        sensorMiddle.append(float(sensorMiddleString[i]))
 
-                        cutendl = lines[7].split("\n")
-                        sensorLeftString = cutendl[0].split(",")
-                        for i in range(3):
-                            sensorLeft.append(float(sensorLeftString[i]))
+                    cutendl = lines[7].split("\n")
+                    sensorLeftString = cutendl[0].split(",")
+                    for i in range(3):
+                        sensorLeft.append(float(sensorLeftString[i]))
 
-                        center, radius = define_circle(sensorRight,sensorMiddle,sensorLeft)
-                        radii.append(radius)
+                    center, radius = define_circle(sensorRight,sensorMiddle,sensorLeft)
+                    radii.append(radius)
 
-                        cutendl = lines[1].split("\n")
-                        sensorDataString = cutendl[0].split(",")
-                        for i in range(6):
-                            sensorData.append(float(sensorDataString[i]))
-                        rightDepth.append(sensorData[0])
-                        middleDepth.append(sensorData[1])
-                        leftDepth.append(sensorData[2])
+                    cutendl = lines[1].split("\n")
+                    sensorDataString = cutendl[0].split(",")
+                    for i in range(6):
+                        sensorData.append(float(sensorDataString[i]))
+                    rightDepth.append(sensorData[0])
+                    middleDepth.append(sensorData[1])
+                    leftDepth.append(sensorData[2])
                         
 
         meanR = sum(r for r in radii)/len(radii)
@@ -118,7 +123,7 @@ if __name__ == "__main__":
         for j in range(len(radii)):
             outf.write(str(radii[j])+"\n")
 
-    fig, (ax1, ax2,ax3) = plt.subplots(3, 1, sharey=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharey=True)
     ax1.plot(rightDepth)
     ax1.set_title('Right Depth')
     ax2.plot(middleDepth)
