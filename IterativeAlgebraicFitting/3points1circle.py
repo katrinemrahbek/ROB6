@@ -67,7 +67,6 @@ if __name__ == "__main__":
     with open("sonar_calculated_radius","w") as outf:
         for subdir, dirs, files in os.walk(rootdir):
             for k, file in enumerate(files):
-<<<<<<< HEAD
                 if len(files) <= k:
                     continue
                 with open(subdir+"/"+file) as f:
@@ -108,46 +107,6 @@ if __name__ == "__main__":
                     rightDepth.append(sensorData[0])
                     middleDepth.append(sensorData[1])
                     leftDepth.append(sensorData[2])
-=======
-                if len(files) != k+1:
-                    with open(subdir+"/"+file) as f:
-                        sensorRight = []
-                        sensorMiddle = []
-                        sensorLeft = []
-                        center = []
-                        sensorData = []
-
-                        lines = f.readlines()
-
-                        if len(lines) < 7:
-                            continue
-
-                        cutendl = lines[3].split("\n")
-                        sensorRightString = cutendl[0].split(",")
-                        for i in range(3):
-                            sensorRight.append(float(sensorRightString[i]))
-
-                        cutendl = lines[5].split("\n")
-                        sensorMiddleString = cutendl[0].split(",")
-                        for i in range(3):
-                            sensorMiddle.append(float(sensorMiddleString[i]))
-
-                        cutendl = lines[7].split("\n")
-                        sensorLeftString = cutendl[0].split(",")
-                        for i in range(3):
-                            sensorLeft.append(float(sensorLeftString[i]))
-
-                        center, radius = define_circle(sensorRight,sensorMiddle,sensorLeft)
-                        radii.append(radius)
-
-                        cutendl = lines[1].split("\n")
-                        sensorDataString = cutendl[0].split(",")
-                        for i in range(6):
-                            sensorData.append(float(sensorDataString[i]))
-                        rightDepth.append(sensorData[0])
-                        middleDepth.append(sensorData[1])
-                        leftDepth.append(sensorData[2])
->>>>>>> edcbd4e4db11b557bde2b0cf7694e9c2c9725ef6
                         
 
         meanR = sum(r for r in radii)/len(radii)
