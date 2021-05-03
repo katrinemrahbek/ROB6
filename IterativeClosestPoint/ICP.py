@@ -132,10 +132,10 @@ for pipe_folder in pipe_folders:
             averageRadius += radius[index]/len(arr)
 
 
-            print("index: " , index, " radius: ", radius[index], "diameter is ", radius[index]*2) # prints this and draws it 
+            #print("index: " , index, " radius: ", radius[index], "diameter is ", radius[index]*2) # prints this and draws it 
 
 
-        draw_registration_result(results_cylinder_points[index], croppedpcd, results[index].transformation)
+        #draw_registration_result(results_cylinder_points[index], croppedpcd, results[index].transformation)
         print("average is = " + str(averageRadius))
         dataCollector.meanRadius = averageRadius
         time2 = time.time()
