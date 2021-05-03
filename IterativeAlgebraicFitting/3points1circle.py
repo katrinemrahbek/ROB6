@@ -65,7 +65,7 @@ if __name__ == "__main__":
     leftDepth = []
     
 
-    with open(rootdir+"/sonar_calculated_radius","w") as outf:
+    with open("sonar_calculated_radius","w") as outf:
         for subdir, dirs, files in os.walk(rootdir):
             for k, file in enumerate(files):
                 if len(files) != k+1:
