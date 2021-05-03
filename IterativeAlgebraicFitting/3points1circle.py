@@ -2,6 +2,7 @@ import numpy as np
 import math
 import os
 import matplotlib.pyplot as plt
+import statistics
 
 
 
@@ -120,6 +121,16 @@ if __name__ == "__main__":
 
         for j in range(len(radii)):
             outf.write(str(radii[j])+"\n")
+
+
+    mean_right = statistics.fmean(rightDepth)
+    mean_middle = statistics.fmean(middleDepth)
+    mean_left = statistics.fmean(leftDepth)
+    std_right = statistics.stdev(rightDepth)
+    std_middle = statistics.stdev(middleDepth)
+    std_left = statistics.stdev(leftDepth)
+
+    print("Mean Right:", mean_right, " Mean middle:", mean_middle, " Mean left:", mean_left, " standard deviation right:", std_right, " standard deviation middle:", std_middle, " standard deviation left:", std_left)
 
     fig, (ax1, ax2,ax3) = plt.subplots(3, 1, sharey=True)
     ax1.plot(rightDepth)
