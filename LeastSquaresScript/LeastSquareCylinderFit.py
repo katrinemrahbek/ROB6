@@ -1,4 +1,5 @@
 import numpy as np
+import open3d as o3d
 
 def preprocess(data):
     n = len(data)
@@ -88,8 +89,6 @@ def CylinderFitting(data):
     '''o3d.visualization.draw_geometries([pcd])'''
     n, Xi, mu, F0, F1, F2, average = preprocess(data)
 
-
-
     minError = float("inf")
     Res1 = 50
     Res2 = 50
@@ -118,6 +117,17 @@ def CylinderFitting(data):
     C += average
     return bestR, minError
 
+#load Point cloud
+pcd = o3d.io.read_point_cloud("plasticbag200.ply")
 
+'''crop points'''
+bbox1 = o3d.geometry.AxisAlignedBoundingBox(min_bound=(-1, -1, 0.01), max_bound=(1, 1, 0.75))
+bbox2 = o3d.geometry.AxisAlignedBoundingBox(min_bound=(-1, -1, -0.75), max_bound=(1, 1, -0.01))
+pcd1 = pcd.crop(bbox1)
+pcd2 = pcd.crop(bbox2)
+data1 = np.array(pcd1.points)
+data2 = np.array(pcd2.points)
+data = np.concatenate((data1, data2))
 
-
+#Do the math
+r, error = CylinderFitting(data)
