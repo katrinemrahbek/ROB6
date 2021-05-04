@@ -35,7 +35,7 @@ using namespace sample_utils;
 
 #define VISUALIZE 0
 #define DOWNSAMPLE 0
-#define MAX_Z_DISTANCE 1.5
+#define MAX_Z_DISTANCE 0.75
 
 typedef pcl::PointXYZRGB PointT;
 
@@ -85,15 +85,23 @@ std::tuple<float, float> calcRadius(pcl::PointCloud<PointT>::Ptr cloud)
 	ne.compute(*cloud_normals);
 
 	// Create the segmentation object for cylinder segmentation and set all the parameters
-	seg.setOptimizeCoefficients(true);
 	seg.setModelType(pcl::SACMODEL_CYLINDER);
 	seg.setMethodType(pcl::SAC_RANSAC);
+	seg.setOptimizeCoefficients(true);
 	seg.setNormalDistanceWeight(0.1);
 	seg.setMaxIterations(10000);
 	seg.setDistanceThreshold(0.05);
 	seg.setRadiusLimits(0.05, 0.3);
 	seg.setInputCloud(cloud);
 	seg.setInputNormals(cloud_normals);
+
+	//initial guess for coeffiecients, 0 position, axis in Z direction. don't guess for radius
+	coefficients_cylinder->values.push_back(0);
+	coefficients_cylinder->values.push_back(0);
+	coefficients_cylinder->values.push_back(0);
+	coefficients_cylinder->values.push_back(0);
+	coefficients_cylinder->values.push_back(0);
+	coefficients_cylinder->values.push_back(1.0);
 
 	// SACMODEL_CYLINDER - used to determine cylinder models. The seven coefficients of the cylinder are given by a point on its axis, the axis direction, and a radius, as: [point_on_axis.x point_on_axis.y point_on_axis.z axis_direction.x axis_direction.y axis_direction.z radius]
 	// Obtain the cylinder inliers and coefficients
@@ -157,7 +165,7 @@ std::tuple<float, float> calcRadius(pcl::PointCloud<PointT>::Ptr cloud)
 	}
 	mse /= (float)cloud->size();
 
-	return std::tuple<float,float> (coefficients_cylinder->values[6], mse);
+	return std::tuple<float,float> (abs(coefficients_cylinder->values[6]), mse);
 }
 
 //Corrected sample standard deviation
@@ -300,8 +308,8 @@ test_result calcRadiusOnFolder(std::string folder_path)
 	for (int i = 0; i < files.size(); i++)
 	{
 		// Read in the cloud data
-		reader.read(folder_path + "/" + files[i], *cloud);
-		//std::cout << "file " << i << " of " << files.size() << ": " << files[i] << " with " << cloud->size() << " points, ";
+		int result = reader.read(folder_path + "/" + files[i], *cloud);
+		std::cout << "read result: " << result << ", file " << i << " of " << files.size() << ": " << files[i] << " with " << cloud->size() << " points, \n";
 		if (cloud->size() == 0)
 			continue;
 
@@ -315,9 +323,11 @@ test_result calcRadiusOnFolder(std::string folder_path)
 		
 		for (int i = 0; i < filtered_cloud->size(); i++)
 		{
-			if (filtered_cloud->at(i).z < 1.5)
+			if (filtered_cloud->at(i).z < MAX_Z_DISTANCE)
+			{
 				filtered_cloud->at(i).r = 255;
 				cropped_cloud->push_back(filtered_cloud->at(i));
+			}
 		}
 		if (cropped_cloud->size() == 0)
 			continue;
@@ -334,7 +344,7 @@ test_result calcRadiusOnFolder(std::string folder_path)
 		//std::cout << "cropped size: " << cropped_cloud->size() << ", ";
 		auto radius_mse = calcRadius(cropped_cloud);
 	#endif
-		//std::cout << "Got radius: " << radius << std::endl;
+		//std::cout << "Got radius: " << std::get<0>(radius_mse) << std::endl;
 		radi.push_back(std::get<0>(radius_mse));
 		mse.push_back(std::get<1>(radius_mse));
 

@@ -29,15 +29,8 @@ class dataContainer:
     exp = ""
     
 
-def save_data(data, pipe):
-    # folder_name, mean radius, corrected sample standard deviation, fps
-    # for example:
-    # data/beton200/exp_200, r: 0.101436, std_dev: 0.000165287, fps: 3.86907
-    # data/...
-
-    # then all the radius' and MSE for each ply file:
-    # data/beton200/exp_50
-    # 0.1023, 0.012
+def save_data(data, pipe): #saves data
+    
     open("data/" + pipe + "/result_ICP.txt", "w").close()
     f = open("data/" + pipe + "/result_ICP.txt", "a")
     print("jeg skriver til en fil nu")
@@ -63,7 +56,7 @@ pipe_folders = os.listdir("data/")
 for pipe_folder in pipe_folders:
     exp_folders = os.listdir("data/" + str(pipe_folder))
     
-    #print(exp_folders)
+    
     vector_data = []
     for exp_folder in exp_folders:
         
@@ -74,11 +67,11 @@ for pipe_folder in pipe_folders:
         if not os.path.isdir('data/' + pipe_folder + "/" +exp_folder):
             print(str(exp_folder) + "er ikke et dir")
             continue
-        #print(exp_folder)
+        
 
 
         cyl = cylinder() # instance of cylinder
-        radius = np.arange(0.1, 0.25, 0.01).tolist()  #make radius array with increments of 0.01
+        radius = np.arange(0.07, 0.3, 0.01).tolist()  #make radius array with increments of 0.01
         averageRadius = 0.0
         arr = os.listdir('data/' + pipe_folder + "/" + exp_folder) 
         
@@ -91,24 +84,24 @@ for pipe_folder in pipe_folders:
 
             
             pcd = o3d.io.read_point_cloud("data/" + pipe_folder + "/" + exp_folder+ "/" +str(arr[i])) #read point cloud
-            bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound = (-1.0, -1.0 , 0.05), max_bound = (1.0,1.0,0.75)) # bounding box that crops data
+            bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound = (-1.0, -1.0 , 0.01), max_bound = (1.0,1.0,0.75)) # bounding box that crops data
             croppedpcd = pcd.crop(bbox)
-            #downpcd = croppedpcd.voxel_down_sample(voxel_size=0.005) #downsample point cloud
+           
             
             for i, rad in enumerate(radius):
                 
-                cyl.a = [0,rad/2.0,0]
-                cyl.b = [0,rad/2.0,2]
+                cyl.a = [0,0,0]
+                cyl.b = [0,0,2]
 
                 cyl.radius = rad
-                mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(rad,height=1.7, resolution = 100, split = 25)
+                mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(rad,height=1.7, resolution = 50, split = 25)
                 mesh_pcd = o3d.geometry.PointCloud()
                 mesh_pcd.points = o3d.utility.Vector3dVector(np.array(mesh_cylinder.vertices))
                 cylinder_points = o3d.geometry.PointCloud()
                 cylinder_points = mesh_pcd.crop(bbox)
 
                 
-                threshold = 0.1 # distance threshold
+                threshold = 0.07 # distance threshold  # 500 mm rør, 0.105
 
                 trans_init = np.asarray(np.asarray([[1.0, 0.0, 0.0, 0.0],
                                                     [0.0, 1.0, 0.0, 0.0],
@@ -129,12 +122,12 @@ for pipe_folder in pipe_folders:
             index = -1
             for i, res in enumerate(results): #figure out where minimum is and uses this as radius
                 #print(i, res.inlier_rmse)
-                if res.inlier_rmse < min_error:
+                if res.inlier_rmse < min_error and res.inlier_rmse > 0.0:
                     min_error = res.inlier_rmse
                     index = i
-
+            
             dataCollector.radiusList.append(radius[index])
-            dataCollector.MSE.append( res.inlier_rmse**2)
+            dataCollector.MSE.append( results[index].inlier_rmse**2)
             dataCollector.exp = (exp_folder)
             averageRadius += radius[index]/len(arr)
 
@@ -147,10 +140,7 @@ for pipe_folder in pipe_folders:
         dataCollector.meanRadius = averageRadius
         time2 = time.time()
         time3 = time2-time1
-        #print("len(dataCollector.radiuslist): ",len(dataCollector.radiusList))
-        #print("len(dataCollector.mse): ",len(dataCollector.MSE))
-        #print("len(dataCollector.times): ",len(dataCollector.times))
-        #print(time3)
+        
         dataCollector.fps = len(arr)/time3
 
         temp = 0
