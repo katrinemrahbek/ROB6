@@ -8,7 +8,7 @@ import os
 import matplotlib.pyplot as plt
 import time
 
-outputFile = "plastic_bag_200_Result_Algorithm1.txt"
+outputFile = "Result_Algorithm1.txt"
 
 def main():
     rootdir = "pipes_ply"
@@ -22,6 +22,8 @@ def main():
         radii = []
         MSE_list = []
         for i, file in enumerate(files):
+            if not file.endswith(".ply"):
+                continue
             plyFile = os.path.join(subdir, file)
             try:
                 radius, MSE = calc_radius_on_ply(plyFile, alpha, beta)
@@ -29,7 +31,7 @@ def main():
                 MSE_list.append(MSE)
             except: 
                 print(str(subdir)+str(file)+": failed")
-                error_list.append(str(subdir)+str(file)+": failed")
+                error_list.append(str(subdir)+"\\"+str(file)+": failed")
 
             print("Cylinder",i+1,"of", len(files)," -> r =",radius)
 
@@ -90,7 +92,6 @@ def calc_radius_on_ply(plyFileName, alpha, beta):
             n = np.asarray([i])
             nt = np.transpose(n)
             C += nt*n
-
         eigval,eigvec = np.linalg.eig(C)
         
         eig_array = []
