@@ -27,35 +27,6 @@ def define_circle(p1, p2, p3):
     return ((cx, cy), radius)
 
 
-# def polarToCircle(distance,angles,plot):
-    # points = []
-    # for i in range(3):
-    #     x = distance[i]*np.cos(angles[i]*math.pi/180)
-    #     y = distance[i]*np.sin(angles[i]*math.pi/180)
-    #     points.append([x, y])
-
-
-    # center = []
-    # center, radius = define_circle(points[0], points[1], points[2])
-
-    # if center is not None and plot:
-    #     plt.figure(figsize=(10, 10))
-    #     plt.ylim(top=2,bottom=-2)
-    #     plt.xlim(right=2,left=-2)
-    #     plt.grid()
-    #     for i in range(3):
-    #         plt.plot(points[i][0],points[i][1],'bo')
-    #     circle = plt.Circle(center, radius)
-    #     plt.gcf().gca().add_artist(circle)
-    #     plt.show()
-
-    # elif center is None:
-    #     print("ERROR! 3 points might be on line")
-
-    # return (radius)
-
-
-
 if __name__ == "__main__":
 
     rootdir = "sensor_readings"
@@ -142,31 +113,3 @@ if __name__ == "__main__":
     ax3.plot(leftDepth)
     ax3.set_title('Left Depth')
     plt.show()
-
-
-
-
-
-
-    # angles = [-30,0,30]
-
-
-    # with serial.Serial('/dev/ttyACM0', 115200, timeout=1) as serial_port:
-    #     serial_port.reset_input_buffer()
-
-    #     while True:
-    #         read_line = serial_port.read()
-    #         if read_line != b'\xff':
-    #             continue
-
-    #         d = []
-    #         byte_array = serial_port.read(24)
-
-    #         serial_port.reset_input_buffer()
-
-    #         d.append(struct.unpack('<f', byte_array[0:4]))
-    #         d.append(struct.unpack('<f', byte_array[4:8]))
-    #         d,append(struct.unpack('<f', byte_array[8:12]))
-
-    #         radius = polarToCircle(d,angles,False)
-    #         print(radius)
