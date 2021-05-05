@@ -2,7 +2,7 @@ import numpy as np
 import math
 import os
 import matplotlib.pyplot as plt
-import statistics
+import statistics as stat
 
 
 
@@ -30,22 +30,23 @@ def define_circle(p1, p2, p3):
 if __name__ == "__main__":
 
     rootdir = "sensor_readings"
-    radii = []
-    rightDepth = []
-    middleDepth = []
-    leftDepth = []
-    
+    outputFile = "sonar_calculated_radius.txt"
 
-    with open("sonar_calculated_radius","w") as outf:
-        for subdir, dirs, files in os.walk(rootdir):
+    for datasets in os.listdir(rootdir):
+        dataset_dir = os.path.join(rootdir, datasets)
+        radii = []
+        rightDepth = []
+        middleDepth = []
+        leftDepth = []
+        with open(os.path.join(dataset_dir, outputFile), 'w') as outf:
+            files = os.listdir(dataset_dir)
             for k, file in enumerate(files):
-                if len(files) <= k:
-                    continue
-                with open(subdir+"/"+file) as f:
-                    lines = f.readlines()
-                    if len(lines) < 7 or not file.endswith(".txt"):
-                        print(file,"did not comply")
+                with open(os.path.join(dataset_dir,file),'r') as f:
+                    if not file.endswith(".txt") or file == outputFile:
+                        if not file == outputFile:
+                            print(file,"did not comply")
                         continue
+                    lines = f.readlines()
                     #print("doing:",file)
 
                     sensorRight = []
@@ -81,35 +82,41 @@ if __name__ == "__main__":
                     leftDepth.append(sensorData[2])
                         
 
-        meanR = sum(r for r in radii)/len(radii)
-        sumr = 0
-        for j in range(len(radii)):
-            sumr += (radii[j]-meanR)**2
-        if len(radii)-1 != 0:
-            std = np.sqrt(sumr/(len(radii)-1))
-        else:
-            std = 0
+            meanR = sum(r for r in radii)/len(radii)
+            sumr = 0
+            for j in range(len(radii)):
+                sumr += (radii[j]-meanR)**2
+            if len(radii)-1 != 0:
+                std = np.sqrt(sumr/(len(radii)-1))
+            else:
+                std = 0
 
-        outf.write(str(rootdir)+", r: "+str(meanR)+", std_dev: "+str(std)+"\n")
+            outf.write(str(rootdir)+", r: "+str(meanR)+", std_dev: "+str(std)+"\n")
 
-        for j in range(len(radii)):
-            outf.write(str(radii[j])+"\n")
+            for j in range(len(radii)):
+                outf.write(str(radii[j])+"\n")
 
+        # visualization
+        mean_right = stat.mean(rightDepth)
+        mean_middle = stat.mean(middleDepth)
+        mean_left = stat.mean(leftDepth)
+        std_right = stat.stdev(rightDepth)
+        std_middle = stat.stdev(middleDepth)
+        std_left = stat.stdev(leftDepth)
 
-    mean_right = statistics.fmean(rightDepth)
-    mean_middle = statistics.fmean(middleDepth)
-    mean_left = statistics.fmean(leftDepth)
-    std_right = statistics.stdev(rightDepth)
-    std_middle = statistics.stdev(middleDepth)
-    std_left = statistics.stdev(leftDepth)
+        print("Mean Right:", mean_right)
+        print("Mean middle:", mean_middle)
+        print("Mean left:", mean_left)
+        print("Standard deviation right:", std_right)
+        print("Standard deviation middle:", std_middle)
+        print("Standard deviation left:", std_left)
 
-    print("Mean Right:", mean_right, " Mean middle:", mean_middle, " Mean left:", mean_left, " standard deviation right:", std_right, " standard deviation middle:", std_middle, " standard deviation left:", std_left)
-
-    fig, (ax1, ax2,ax3) = plt.subplots(3, 1, sharey=True)
-    ax1.plot(rightDepth)
-    ax1.set_title('Right Depth')
-    ax2.plot(middleDepth)
-    ax2.set_title('Middle Depth')
-    ax3.plot(leftDepth)
-    ax3.set_title('Left Depth')
-    plt.show()
+        fig, (ax1,ax2,ax3) = plt.subplots(3, 1, sharey=True)
+        fig.suptitle(str(datasets))
+        ax1.plot(rightDepth)
+        ax1.set_title('Right Depth')
+        ax2.plot(middleDepth)
+        ax2.set_title('Middle Depth')
+        ax3.plot(leftDepth)
+        ax3.set_title('Left Depth')
+        plt.show()
