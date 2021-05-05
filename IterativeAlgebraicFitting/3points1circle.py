@@ -94,21 +94,25 @@ if __name__ == "__main__":
                     rightDepth.append(sensorData[0])
                     middleDepth.append(sensorData[1])
                     leftDepth.append(sensorData[2])
-                        
 
-            meanR = sum(r for r in radii)/len(radii)
+            filtered_radii = []            
+            for j in radii:
+                if  j > 0.05 and j < 0.3:
+                    filtered_radii.append(j)
+
+            meanR = sum(r for r in filtered_radii)/len(filtered_radii)
             sumr = 0
-            for j in range(len(radii)):
-                sumr += (radii[j]-meanR)**2
-            if len(radii)-1 != 0:
-                std = np.sqrt(sumr/(len(radii)-1))
+            for j in range(len(filtered_radii)):
+                sumr += (filtered_radii[j]-meanR)**2
+            if len(filtered_radii)-1 != 0:
+                std = np.sqrt(sumr/(len(filtered_radii)-1))
             else:
                 std = 0
 
             outf.write(str(rootdir)+", r: "+str(meanR)+", std_dev: "+str(std)+"\n")
 
-            for j in range(len(radii)):
-                outf.write(str(radii[j])+"\n")
+            for j in range(len(filtered_radii)):
+                outf.write(str(filtered_radii[j])+"\n")
 
         # visualization
         mean_right = stat.mean(rightDepth)
@@ -133,4 +137,4 @@ if __name__ == "__main__":
         ax2.set_title('Middle Depth')
         ax3.plot(leftDepth)
         ax3.set_title('Left Depth')
-        plt.show()
+        #plt.show()
