@@ -116,4 +116,3 @@ def CylinderFitting(data):
     bestR = np.sqrt(bestR)
     C += average
     return bestR, minError
-
