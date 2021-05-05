@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def preprocess(data):
     n = len(data)
     dataSum = sum(i for i in data)
@@ -88,8 +89,6 @@ def CylinderFitting(data):
     '''o3d.visualization.draw_geometries([pcd])'''
     n, Xi, mu, F0, F1, F2, average = preprocess(data)
 
-
-
     minError = float("inf")
     Res1 = 50
     Res2 = 50
@@ -117,7 +116,4 @@ def CylinderFitting(data):
     bestR = np.sqrt(bestR)
     C += average
     return bestR, minError
-
-
-
 
