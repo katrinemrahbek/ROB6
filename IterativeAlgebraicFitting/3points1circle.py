@@ -6,7 +6,7 @@ import statistics as stat
 
 
 
-def define_circle(p1, p2, p3):
+def define_circle(p1, p2, p3, plot):
     """
     Returns the center and radius of the circle passing the given 3 points.
     In case the 3 points form a line, returns (None, infinity).
@@ -24,6 +24,19 @@ def define_circle(p1, p2, p3):
     cy = ((p1[0] - p2[0]) * cd - (p2[0] - p3[0]) * bc) / det
 
     radius = np.sqrt((cx - p1[0])**2 + (cy - p1[1])**2)
+
+    if plot:
+        plt.figure(figsize=(6, 6))
+        plt.ylim(top=0.025,bottom=-0.075)
+        plt.xlim(right=0.05,left=-0.05)
+        plt.grid()
+        plt.plot(p1[0],p1[1],'bo')
+        plt.plot(p2[0],p2[1],'bo')
+        plt.plot(p3[0],p3[1],'bo')
+        circle = plt.Circle((cx,cy), radius)
+        plt.gcf().gca().add_artist(circle)
+        plt.show()
+
     return ((cx, cy), radius)
 
 
@@ -31,6 +44,7 @@ if __name__ == "__main__":
 
     rootdir = "sensor_readings"
     outputFile = "sonar_calculated_radius.txt"
+    plot = False
 
     for datasets in os.listdir(rootdir):
         dataset_dir = os.path.join(rootdir, datasets)
@@ -70,7 +84,7 @@ if __name__ == "__main__":
                     for i in range(3):
                         sensorLeft.append(float(sensorLeftString[i]))
 
-                    center, radius = define_circle(sensorRight,sensorMiddle,sensorLeft)
+                    center, radius = define_circle(sensorRight,sensorMiddle,sensorLeft,plot)
                     radii.append(radius)
 
                     cutendl = lines[1].split("\n")
