@@ -32,7 +32,7 @@
 #define MAX_Z_DISTANCE 0.75
 #define EXPOSURE_SETTING 1000
 #define USECASE_SETTING 1
-#define VISUALIZE 1
+#define VISUALIZE 0
 
 //globals to communicate and protect between threads
 std::mutex picoMut;
@@ -257,121 +257,96 @@ public:
 		picoMut.lock();
 		this->data = *data;
 		hasData = true;
-		picoMut.unlock();
 		
 		cloud = DepthDataToPCLI(&this->data);
 		if (!viewer->updatePointCloud<pcl::PointXYZI>(cloud, "sample cloud"))
-					viewer->addPointCloud<pcl::PointXYZI>(cloud, "sample cloud");
+			viewer->addPointCloud<pcl::PointXYZI>(cloud, "sample cloud");
+		picoMut.unlock();
+
 		viewer->spinOnce();
 	}
+
+	float calcRadius()
+	{
+		pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
+		pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
+		pcl::ExtractIndices<PointT> extract;
+		pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>());
+
+		pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+		pcl::ModelCoefficients::Ptr coefficients_cylinder(new pcl::ModelCoefficients);
+		pcl::PointIndices::Ptr inliers_cylinder(new pcl::PointIndices);
+
+		pcl::PointCloud<PointT>::Ptr cropped_cloud(new pcl::PointCloud<PointT>);
+		
+		ne.setSearchMethod(tree);
+		ne.setInputCloud(cloud);
+		ne.setKSearch(50);
+		ne.compute(*cloud_normals);
+		
+		// Create the segmentation object for cylinder segmentation and set all the parameters
+		seg.setModelType(pcl::SACMODEL_CYLINDER);
+		seg.setMethodType(pcl::SAC_RANSAC);
+		seg.setOptimizeCoefficients(true);
+		seg.setNormalDistanceWeight(0.1);
+		seg.setMaxIterations(10000);
+		seg.setDistanceThreshold(0.05);
+		seg.setRadiusLimits(0.05, 0.3);
+		seg.setInputCloud(cloud);
+		seg.setInputNormals(cloud_normals);
+
+		//initial guess for coeffiecients, 0 position, axis in Z direction. don't guess for radius
+		coefficients_cylinder->values.push_back(0);
+		coefficients_cylinder->values.push_back(0);
+		coefficients_cylinder->values.push_back(0);
+		coefficients_cylinder->values.push_back(0);
+		coefficients_cylinder->values.push_back(0);
+		coefficients_cylinder->values.push_back(1.0);
+
+		// SACMODEL_CYLINDER - used to determine cylinder models. The seven coefficients of the cylinder are given by a point on its axis, the axis direction, and a radius, as: [point_on_axis.x point_on_axis.y point_on_axis.z axis_direction.x axis_direction.y axis_direction.z radius]
+		// Obtain the cylinder inliers and coefficients
+		seg.segment(*inliers_cylinder, *coefficients_cylinder);
+		
+	#if VISUALIZE==1
+		extract.setInputCloud(cloud);
+		extract.setIndices(inliers_cylinder);
+		extract.setNegative(false);
+		extract.filter(*cropped_cloud);
+
+		//for (int i = 0; i < cropped_cloud->size(); i++)
+		//	cropped_cloud->at(i).g = 255;
+
+		//pcl::visualization::PCLVisualizer viewer("data viewer");
+
+		//pcl::visualization::PointCloudColorHandlerRGBField<PointT> cloud_rgb(cloud);
+		//viewer->addPointCloud<PointT>(cloud, cloud_rgb, "sample cloud");
+		//viewer.addPointCloud<PointT>(cloud, "sample cloud");
+		pcl::visualization::PointCloudColorHandlerRGBField<PointT> cropped_cloud_rgb(cropped_cloud);
+		if(!viewer->updatePointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud"))
+		{
+			viewer->addPointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud");
+		}
+		//viewer.addCoordinateSystem(1.0);
+		//viewer.initCameraParameters();
+		//coefficients_cylinder->values[0] = 0;
+		//coefficients_cylinder->values[1] = 0;
+		//coefficients_cylinder->values[2] = 0;
+		//if (coefficients_cylinder->values[5] < 0)
+		//	coefficients_cylinder->values[5] *= -1;
+		viewer->addCylinder(*coefficients_cylinder, "cylinder");
+		/*
+		while (!viewer.wasStopped())
+		{
+			viewer.spinOnce(100);
+			boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+		}
+		*/
+	#endif
+		
+		return abs(coefficients_cylinder->values[6]);
+		
+	}
 };
-
-
-float calcRadius(pcl::PointCloud<PointT>::Ptr cloud)
-{
-	pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
-	pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
-	pcl::ExtractIndices<PointT> extract;
-	pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>());
-
-	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-	pcl::ModelCoefficients::Ptr coefficients_cylinder(new pcl::ModelCoefficients);
-	pcl::PointIndices::Ptr inliers_cylinder(new pcl::PointIndices);
-
-	pcl::PointCloud<PointT>::Ptr cropped_cloud(new pcl::PointCloud<PointT>);
-
-	ne.setSearchMethod(tree);
-	ne.setInputCloud(cloud);
-	ne.setKSearch(50);
-	ne.compute(*cloud_normals);
-
-	// Create the segmentation object for cylinder segmentation and set all the parameters
-	seg.setModelType(pcl::SACMODEL_CYLINDER);
-	seg.setMethodType(pcl::SAC_RANSAC);
-	seg.setOptimizeCoefficients(true);
-	seg.setNormalDistanceWeight(0.1);
-	seg.setMaxIterations(10000);
-	seg.setDistanceThreshold(0.05);
-	seg.setRadiusLimits(0.05, 0.3);
-	seg.setInputCloud(cloud);
-	seg.setInputNormals(cloud_normals);
-
-	//initial guess for coeffiecients, 0 position, axis in Z direction. don't guess for radius
-	coefficients_cylinder->values.push_back(0);
-	coefficients_cylinder->values.push_back(0);
-	coefficients_cylinder->values.push_back(0);
-	coefficients_cylinder->values.push_back(0);
-	coefficients_cylinder->values.push_back(0);
-	coefficients_cylinder->values.push_back(1.0);
-
-	// SACMODEL_CYLINDER - used to determine cylinder models. The seven coefficients of the cylinder are given by a point on its axis, the axis direction, and a radius, as: [point_on_axis.x point_on_axis.y point_on_axis.z axis_direction.x axis_direction.y axis_direction.z radius]
-	// Obtain the cylinder inliers and coefficients
-	seg.segment(*inliers_cylinder, *coefficients_cylinder);
-
-#if VISUALIZE==1
-	extract.setInputCloud(cloud);
-	extract.setIndices(inliers_cylinder);
-	extract.setNegative(false);
-	extract.filter(*cropped_cloud);
-
-	//for (int i = 0; i < cropped_cloud->size(); i++)
-	//	cropped_cloud->at(i).g = 255;
-
-	pcl::visualization::PCLVisualizer viewer("data viewer");
-
-	pcl::visualization::PointCloudColorHandlerRGBField<PointT> cloud_rgb(cloud);
-	viewer.addPointCloud<PointT>(cloud, cloud_rgb, "sample cloud");
-	//viewer.addPointCloud<PointT>(cloud, "sample cloud");
-	pcl::visualization::PointCloudColorHandlerRGBField<PointT> cropped_cloud_rgb(cropped_cloud);
-	viewer.addPointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud");
-	//viewer.addCoordinateSystem(1.0);
-	viewer.initCameraParameters();
-	//coefficients_cylinder->values[0] = 0;
-	//coefficients_cylinder->values[1] = 0;
-	//coefficients_cylinder->values[2] = 0;
-	//if (coefficients_cylinder->values[5] < 0)
-	//	coefficients_cylinder->values[5] *= -1;
-	viewer.addCylinder(*coefficients_cylinder, "cylinder");
-	/*
-	while (!viewer.wasStopped())
-	{
-		viewer.spinOnce(100);
-		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
-	}
-	*/
-#endif
-
-	/*
-	float mse = 0;
-	for(auto point: cloud.get()->points)
-	{
-		Eigen::Vector3f pi;
-		pi[0] = point.x;
-		pi[1] = point.y;
-		pi[2] = point.z;
-		Eigen::Vector3f pstar;
-		pstar[0] = coefficients_cylinder->values[0];
-		pstar[1] = coefficients_cylinder->values[1];
-		pstar[2] = coefficients_cylinder->values[2];
-		Eigen::Vector3f a;
-		a[0] = coefficients_cylinder->values[3];
-		a[1] = coefficients_cylinder->values[4];
-		a[2] = coefficients_cylinder->values[5];
-
-		Eigen::Vector3f pi_m_pstar = pi-pstar;
-		float pi_m_pstar_dot_a = pi_m_pstar.dot(a);
-		Eigen::Vector3f pi_m_pstar_dot_a_mult_a = pi_m_pstar_dot_a * a;
-		Eigen::Vector3f vec = pi_m_pstar - pi_m_pstar_dot_a_mult_a;
-		float norm = vec.norm();
-		float deltaDist = norm - coefficients_cylinder->values[6];
-		mse += deltaDist*deltaDist;
-	}
-	mse /= (float)cloud->size();
-
-	return std::tuple<float,float> (abs(coefficients_cylinder->values[6]), mse);
-	*/
-	return abs(coefficients_cylinder->values[6]);
-}
 
 
 
@@ -403,8 +378,8 @@ int main(int argc, char *argv[])
         if(listener->hasData)
         {
             listener->hasData = false;
-            auto data = listener->cloud;
-            float r = calcRadius(data);
+            //auto data = listener->cloud;
+            float r = listener->calcRadius();
 			std::cout << "got radius: " << r << "\n";
             picoMut.unlock();
         }
