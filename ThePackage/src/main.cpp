@@ -29,10 +29,14 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/voxel_grid.h>
 
+#include "matplotlibcpp.h"
+
 #define MAX_Z_DISTANCE 0.75
 #define EXPOSURE_SETTING 1000
 #define USECASE_SETTING 1
 #define VISUALIZE 0
+
+namespace plt = matplotlibcpp;
 
 //globals to communicate and protect between threads
 std::mutex picoMut;
@@ -372,6 +376,11 @@ int main(int argc, char *argv[])
         std::cerr << "Error starting the capturing" << std::endl;
         return 1;
     }	
+
+	#define NUM_DATA_POINTS 50
+	std::vector<float> radii(NUM_DATA_POINTS);
+	int radiPos = 0;
+
     while (true)
     {
         picoMut.lock();
@@ -380,6 +389,14 @@ int main(int argc, char *argv[])
             listener->hasData = false;
             //auto data = listener->cloud;
             float r = listener->calcRadius();
+			radii[radiPos] = r;
+			radiPos++;
+			if(radiPos >= NUM_DATA_POINTS)
+				radiPos = 0;
+			
+			plt::clf();
+			plt::plot(radii);
+			plt::pause(0.00000001);
 			std::cout << "got radius: " << r << "\n";
             picoMut.unlock();
         }
