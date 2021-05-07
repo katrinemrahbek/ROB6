@@ -170,7 +170,6 @@ public:
 	bool hasData;
 	royale::DepthData data;
 	pcl::visualization::PCLVisualizer::Ptr viewer;
-	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud;
 
 	cameraListener() : hasData(false)
 	{
@@ -263,17 +262,15 @@ public:
 		this->data = *data;
 		hasData = true;
 
-		cloud = DepthDataToPCLI(&this->data);
+		pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = DepthDataToPCLI(&this->data);
 		//if(cloud->size() == 0)
             	//	return;
 		if (!viewer->updatePointCloud<pcl::PointXYZI>(cloud, "sample cloud"))
 			viewer->addPointCloud<pcl::PointXYZI>(cloud, "sample cloud");
 		picoMut.unlock();
-
-		viewer->spinOnce();
 	}
 
-	float calcRadius()
+	float calcRadius(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in)
 	{
         	//if(cloud->size() == 0)
             		//return -1;
@@ -289,7 +286,7 @@ public:
 		pcl::PointCloud<PointT>::Ptr cropped_cloud(new pcl::PointCloud<PointT>);
 
 		ne.setSearchMethod(tree);
-		ne.setInputCloud(cloud);
+		ne.setInputCloud(cloud_in);
 		ne.setKSearch(50);
 		ne.compute(*cloud_normals);
 
@@ -301,7 +298,7 @@ public:
 		seg.setMaxIterations(1000);
 		seg.setDistanceThreshold(0.05);
 		seg.setRadiusLimits(0.05, 0.3);
-		seg.setInputCloud(cloud);
+		seg.setInputCloud(cloud_in);
 		seg.setInputNormals(cloud_normals);
 
 		//initial guess for coeffiecients, 0 position, axis in Z direction. don't guess for radius
@@ -322,7 +319,7 @@ public:
 		}
 
 	#if VISUALIZE==1
-		extract.setInputCloud(cloud);
+		extract.setInputCloud(cloud_in);
 		extract.setIndices(inliers_cylinder);
 		extract.setNegative(false);
 		extract.filter(*cropped_cloud);
@@ -423,29 +420,37 @@ int main(int argc, char *argv[])
         {
             listener->hasData = false;
             //auto data = listener->cloud;
-            float r = listener->calcRadius();
-		radii.push_back(r);
-		if(radii.size()> NUM_DATA_POINTS)
-			radii.pop_front();
-		std::vector<float> data;
-		for(auto it = radii.begin(); it != radii.end(); it++)
-			data.push_back(*it);
+			/*
+			pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = listener->cloud;
+			pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_copy(new pcl::PointCloud<pcl::PointXYZI>);
+			pcl::copyPointCloud(*cloud, *cloud_copy); 
+			*/
+			listener->viewer->spinOnce(10);
+			auto cloud_copy = DepthDataToPCLI(&listener->data);
+			picoMut.unlock();
+			std::cout << "copyed cloud\n";
+            float r = listener->calcRadius(cloud_copy);
+			radii.push_back(r);
+			if(radii.size()> NUM_DATA_POINTS)
+				radii.pop_front();
+			std::vector<float> data;
+			for(auto it = radii.begin(); it != radii.end(); it++)
+				data.push_back(*it);
 
+			auto statistics = std_dev(data);
+			plt::clf();
+			plt::plot(data);
+			auto mean = std::get<0>(statistics);
+			auto stddev = std::get<1>(statistics);
 
-		auto statistics = std_dev(data);
-		plt::clf();
-		plt::plot(data);
-		auto mean = std::get<0>(statistics);
-		auto stddev = std::get<1>(statistics);
+			std::string title = "Mean: " + std::to_string(mean) + ", std_dev: " + std::to_string(stddev);
 
-		std::string title = "Mean: " + std::to_string(mean) + ", std_dev: " + std::to_string(stddev);
+			plt::title(title);
+			plt::xlim(0,50);
+			plt::ylim(0.04, 0.3);
+			plt::pause(0.00000001);
 
-		plt::title(title);
-		plt::ylim(0.04, 0.3);
-		plt::pause(0.00000001);
-
-		std::cout << "got radius: " << r << "\n";
-	picoMut.unlock();
+			std::cout << "got radius: " << r << "\n";
         }
         else
         {
