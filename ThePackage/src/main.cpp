@@ -272,8 +272,8 @@ public:
 
 	float calcRadius(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in)
 	{
-        	//if(cloud->size() == 0)
-            		//return -1;
+        	if(cloud_in->size() == 0)
+            		return -1;
 		pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
 		pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
 		pcl::ExtractIndices<PointT> extract;
@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
 			std::cout << "copyed cloud\n";
             float r = listener->calcRadius(cloud_copy);
 			radii.push_back(r);
-			if(radii.size()> NUM_DATA_POINTS)
+			if(radii.size()> NUM_DATA_POINTS && radii.size()> 0)
 				radii.pop_front();
 			std::vector<float> data;
 			for(auto it = radii.begin(); it != radii.end(); it++)
