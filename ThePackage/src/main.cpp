@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <cstdio>
+#include <list>
 
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
@@ -34,7 +35,7 @@
 #define MAX_Z_DISTANCE 0.75
 #define EXPOSURE_SETTING 1000
 #define USECASE_SETTING 1
-#define VISUALIZE 0
+#define VISUALIZE 1
 
 namespace plt = matplotlibcpp;
 
@@ -83,7 +84,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice, int select
 	8	Low_Noise_Extended
 	9	Fast_Acquisition
 		*/
-    
+
 	royale::Vector<royale::String> useCases;
 	auto status = cameraDevice->getUseCases(useCases);
 	//std::cout << "got use cases\n";
@@ -127,7 +128,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr DepthDataToPCL(royale::DepthData* data)
 	cloud->height = data->height;
 	cloud->width = data->width;
 	//cloud.header.stamp = data->timeStamp;
-	
+
 	for (auto point : data->points)
 	{
 		if(point.z < MAX_Z_DISTANCE && point.z != 0)
@@ -147,7 +148,7 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr DepthDataToPCLI(royale::DepthData* data)
 	cloud->height = data->height;
 	cloud->width = data->width;
 	//cloud.header.stamp = data->timeStamp;
-	
+
 	for (auto point : data->points)
 	{
 		if(point.z < MAX_Z_DISTANCE && point.z != 0)
@@ -261,8 +262,10 @@ public:
 		picoMut.lock();
 		this->data = *data;
 		hasData = true;
-		
+
 		cloud = DepthDataToPCLI(&this->data);
+		//if(cloud->size() == 0)
+            	//	return;
 		if (!viewer->updatePointCloud<pcl::PointXYZI>(cloud, "sample cloud"))
 			viewer->addPointCloud<pcl::PointXYZI>(cloud, "sample cloud");
 		picoMut.unlock();
@@ -272,6 +275,8 @@ public:
 
 	float calcRadius()
 	{
+        	//if(cloud->size() == 0)
+            		//return -1;
 		pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
 		pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
 		pcl::ExtractIndices<PointT> extract;
@@ -282,18 +287,18 @@ public:
 		pcl::PointIndices::Ptr inliers_cylinder(new pcl::PointIndices);
 
 		pcl::PointCloud<PointT>::Ptr cropped_cloud(new pcl::PointCloud<PointT>);
-		
+
 		ne.setSearchMethod(tree);
 		ne.setInputCloud(cloud);
 		ne.setKSearch(50);
 		ne.compute(*cloud_normals);
-		
+
 		// Create the segmentation object for cylinder segmentation and set all the parameters
 		seg.setModelType(pcl::SACMODEL_CYLINDER);
 		seg.setMethodType(pcl::SAC_RANSAC);
 		seg.setOptimizeCoefficients(true);
 		seg.setNormalDistanceWeight(0.1);
-		seg.setMaxIterations(10000);
+		seg.setMaxIterations(1000);
 		seg.setDistanceThreshold(0.05);
 		seg.setRadiusLimits(0.05, 0.3);
 		seg.setInputCloud(cloud);
@@ -310,7 +315,12 @@ public:
 		// SACMODEL_CYLINDER - used to determine cylinder models. The seven coefficients of the cylinder are given by a point on its axis, the axis direction, and a radius, as: [point_on_axis.x point_on_axis.y point_on_axis.z axis_direction.x axis_direction.y axis_direction.z radius]
 		// Obtain the cylinder inliers and coefficients
 		seg.segment(*inliers_cylinder, *coefficients_cylinder);
-		
+		if(coefficients_cylinder->values.size() != 7)
+		{
+			std::cout << "coefficients_cylinder->values.size() != 7 is true, failed to segment? \n";
+			return -1;
+		}
+
 	#if VISUALIZE==1
 		extract.setInputCloud(cloud);
 		extract.setIndices(inliers_cylinder);
@@ -325,11 +335,11 @@ public:
 		//pcl::visualization::PointCloudColorHandlerRGBField<PointT> cloud_rgb(cloud);
 		//viewer->addPointCloud<PointT>(cloud, cloud_rgb, "sample cloud");
 		//viewer.addPointCloud<PointT>(cloud, "sample cloud");
-		pcl::visualization::PointCloudColorHandlerRGBField<PointT> cropped_cloud_rgb(cropped_cloud);
-		if(!viewer->updatePointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud"))
-		{
-			viewer->addPointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud");
-		}
+		//pcl::visualization::PointCloudColorHandlerRGBField<PointT> cropped_cloud_rgb(cropped_cloud);
+		//if(!viewer->updatePointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud"))
+		//{
+		//	viewer->addPointCloud<PointT>(cropped_cloud, cropped_cloud_rgb, "cropped cloud");
+		//}
 		//viewer.addCoordinateSystem(1.0);
 		//viewer.initCameraParameters();
 		//coefficients_cylinder->values[0] = 0;
@@ -337,6 +347,14 @@ public:
 		//coefficients_cylinder->values[2] = 0;
 		//if (coefficients_cylinder->values[5] < 0)
 		//	coefficients_cylinder->values[5] *= -1;
+		float b = -coefficients_cylinder->values[2]/coefficients_cylinder->values[5];
+		for(int i = 0; i<3; i++)
+        {
+            coefficients_cylinder->values[i] = coefficients_cylinder->values[i] + b*coefficients_cylinder->values[3+i];
+            if(coefficients_cylinder->values[5] < 0)
+                coefficients_cylinder->values[3+i] *= -1;
+        }
+		viewer->removeShape("cylinder");
 		viewer->addCylinder(*coefficients_cylinder, "cylinder");
 		/*
 		while (!viewer.wasStopped())
@@ -346,13 +364,29 @@ public:
 		}
 		*/
 	#endif
-		
+
 		return abs(coefficients_cylinder->values[6]);
-		
+
 	}
 };
 
 
+//Corrected sample standard deviation
+std::tuple<float, float> std_dev(std::vector<float> data)
+{
+    if(data.size() < 2)
+        return std::tuple<float, float>(0,0);
+	float mean = 0.0;
+	for (int i = 0; i < data.size(); i++)
+		mean += data[i] / (float)data.size();
+
+	float sumMmeanSq = 0.0;
+	for (int i = 0; i < data.size(); i++)
+		sumMmeanSq += pow(data[i] - mean, 2);
+
+	float std_dev = sqrt((1.0 / (float)(data.size() - 1))*sumMmeanSq);
+	return std::tuple<float, float>(mean, std_dev);
+}
 
 int main(int argc, char *argv[])
 {
@@ -375,12 +409,13 @@ int main(int argc, char *argv[])
     {
         std::cerr << "Error starting the capturing" << std::endl;
         return 1;
-    }	
+    }
 
 	#define NUM_DATA_POINTS 50
-	std::vector<float> radii(NUM_DATA_POINTS);
-	int radiPos = 0;
-
+	std::list<float> radii;
+	plt::plot();
+	plt::xlabel("#measurement");
+	plt::ylabel("radius in mm");
     while (true)
     {
         picoMut.lock();
@@ -389,16 +424,28 @@ int main(int argc, char *argv[])
             listener->hasData = false;
             //auto data = listener->cloud;
             float r = listener->calcRadius();
-			radii[radiPos] = r;
-			radiPos++;
-			if(radiPos >= NUM_DATA_POINTS)
-				radiPos = 0;
-			
-			plt::clf();
-			plt::plot(radii);
-			plt::pause(0.00000001);
-			std::cout << "got radius: " << r << "\n";
-            picoMut.unlock();
+		radii.push_back(r);
+		if(radii.size()> NUM_DATA_POINTS)
+			radii.pop_front();
+		std::vector<float> data;
+		for(auto it = radii.begin(); it != radii.end(); it++)
+			data.push_back(*it);
+
+
+		auto statistics = std_dev(data);
+		plt::clf();
+		plt::plot(data);
+		auto mean = std::get<0>(statistics);
+		auto stddev = std::get<1>(statistics);
+
+		std::string title = "Mean: " + std::to_string(mean) + ", std_dev: " + std::to_string(stddev);
+
+		plt::title(title);
+		plt::ylim(0.04, 0.3);
+		plt::pause(0.00000001);
+
+		std::cout << "got radius: " << r << "\n";
+	picoMut.unlock();
         }
         else
         {
