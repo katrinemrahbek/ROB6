@@ -106,7 +106,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice, int select
 		return 1;
 	}
 	//std::cout << "before setexposuremode\n";
-
+	
 	if (cameraDevice->setExposureMode(royale::ExposureMode::MANUAL) != royale::CameraStatus::SUCCESS)
 	{
 		std::cout << "failed to set fixed exposure mode\n";
@@ -116,6 +116,7 @@ int setupCamera(std::shared_ptr<royale::ICameraDevice> &cameraDevice, int select
     {
         std::cout << "failed to set exposure: " << exposure << "\n";
     }
+	
 	uint16_t maxFrameRate;
 	cameraDevice->getFrameRate(maxFrameRate);
 	std::cout << "Framerate: " << maxFrameRate << "\n";
@@ -428,21 +429,23 @@ int main(int argc, char *argv[])
 			listener->viewer->spinOnce(10);
 			auto cloud_copy = DepthDataToPCLI(&listener->data);
 			picoMut.unlock();
-			std::cout << "copyed cloud\n";
+			//std::cout << "copyed cloud\n";
             float r = listener->calcRadius(cloud_copy);
 			radii.push_back(r);
 			if(radii.size()> NUM_DATA_POINTS && radii.size()> 0)
 				radii.pop_front();
 			std::vector<float> data;
 			for(auto it = radii.begin(); it != radii.end(); it++)
-				data.push_back(*it);
+				data.push_back(*it * 1000);
 
 			plt::clf();
 			plt::plot(data);
 
-			while(data.size() > 25)
-				data.pop_back();
-			auto statistics = std_dev(data);
+			std::vector<float> statisticsData;
+			for(int i = 0; i < NUM_DATA_POINTS/2; i++)
+				statisticsData.push_back(data[i+NUM_DATA_POINTS/2]);
+
+			auto statistics = std_dev(statisticsData);
 
 			auto mean = std::get<0>(statistics);
 			auto stddev = std::get<1>(statistics);
@@ -450,14 +453,13 @@ int main(int argc, char *argv[])
 			std::vector<float> meanX = {NUM_DATA_POINTS / 2, NUM_DATA_POINTS};
 			plt::plot(meanX, meanY);
 
-			std::string title = "Mean: " + std::to_string(mean) + ", std_dev: " + std::to_string(stddev);
+			std::string title = "Mean: " + std::to_string(mean) + "mm, std_dev: " + std::to_string(stddev) + "mm";
 
 			plt::title(title);
 			plt::xlim(0,50);
-			plt::ylim(0.04, 0.3);
+			plt::ylim(40, 300);
 			plt::pause(0.00000001);
-
-			std::cout << "got radius: " << r << "\n";
+			//std::cout << "got radius: " << r << "\n";
         }
         else
         {
