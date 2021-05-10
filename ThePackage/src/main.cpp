@@ -437,11 +437,18 @@ int main(int argc, char *argv[])
 			for(auto it = radii.begin(); it != radii.end(); it++)
 				data.push_back(*it);
 
-			auto statistics = std_dev(data);
 			plt::clf();
 			plt::plot(data);
+
+			while(data.size() > 25)
+				data.pop_back();
+			auto statistics = std_dev(data);
+
 			auto mean = std::get<0>(statistics);
 			auto stddev = std::get<1>(statistics);
+			std::vector<float> meanY = {mean, mean};
+			std::vector<float> meanX = {NUM_DATA_POINTS / 2, NUM_DATA_POINTS};
+			plt::plot(meanX, meanY);
 
 			std::string title = "Mean: " + std::to_string(mean) + ", std_dev: " + std::to_string(stddev);
 
