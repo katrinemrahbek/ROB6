@@ -1,4 +1,36 @@
 import numpy as np
+import open3d as o3d
+
+def draw_cylinder(axis, point_on_axis, radius, height):
+        axis[2], axis[0] = axis[0], axis[2]
+
+        cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=radius, height=height)
+        Rz, Ry = calculate_zy_rotation_for_arrow(axis)
+        cylinder.rotate(Ry, center=np.array([0, 0, 0]))
+        cylinder.rotate(Rz, center=np.array([0, 0, 0]))
+        if axis[2] < 0:
+            cylinder.translate(np.subtract(point_on_axis, axis))
+        else:
+            cylinder.translate(np.add(point_on_axis, axis))
+
+        return cylinder
+
+
+def calculate_zy_rotation_for_arrow(dirVector):
+    # Rotation over z axis of the FOR
+    gamma = np.arctan2(dirVector[1], dirVector[0])
+    Rz = np.array([[np.cos(gamma), -np.sin(gamma), 0],
+                   [np.sin(gamma), np.cos(gamma), 0],
+                   [0, 0, 1]])
+    # Rotate vec to calculate next rotation
+    vec = Rz.T @ dirVector.reshape(-1, 1)
+    vec = vec.reshape(-1)
+    # Rotation over y axis of the FOR
+    beta = np.arctan2(vec[0], vec[2])
+    Ry = np.array([[np.cos(beta), 0, np.sin(beta)],
+                   [0, 1, 0],
+                   [-np.sin(beta), 0, np.cos(beta)]])
+    return Rz, Ry
 
 
 def preprocess(data):
@@ -115,4 +147,4 @@ def CylinderFitting(data):
 
     bestR = np.sqrt(bestR)
     C += average
-    return bestR, minError
+    return bestR, minError, C, W
