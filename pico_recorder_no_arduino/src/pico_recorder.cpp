@@ -274,9 +274,11 @@ int main(int argc, char *argv[])
 		std::cerr << "Error registering data listener" << std::endl;
 		return 1;
 	}
+	
 	std::vector<int> exposures = {50, 100, 500};
 	std::cout << "Starting to capture... \n";
 	std::string framerate = "fps45_";
+	/*
 	for (auto exposure : exposures)
 	{
 		if (cameraDevice->setExposureTime(exposure) != royale::CameraStatus::SUCCESS)
@@ -337,6 +339,7 @@ int main(int argc, char *argv[])
 		std::cerr << "Error stopping the capturing" << std::endl;
 		return 1;
 	}
+	*/
 
 	royale::Vector<royale::String> useCases;
 	auto status = cameraDevice->getUseCases(useCases);
@@ -399,8 +402,9 @@ int main(int argc, char *argv[])
 					std::string plyName, txtName;
 					plyName = folderName + "/" + std::to_string(n_frames) + ".ply";
 					listener->writePLY(plyName, (&listener->data));
-
+	
 					picoMut.unlock();
+					boost::this_thread::sleep(boost::posix_time::microseconds(1000));
 
 					n_frames ++;
 				}

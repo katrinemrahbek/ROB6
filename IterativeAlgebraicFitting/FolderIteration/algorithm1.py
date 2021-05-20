@@ -12,7 +12,7 @@ outputFile = "_Result_Algorithm1.txt"
 
 
 def main():
-    rootdir = "/home/hax/Desktop/New Folder/"
+    rootdir = "/home/hax/Desktop/sync_folder/P6/testfit_dataset/"
     alpha = 50
     beta = 0.95
     error_list = []

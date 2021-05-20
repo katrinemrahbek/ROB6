@@ -7,7 +7,7 @@ import LeastSquareCylinderFit as LSC
 
 
 def changer():
-    folder = "ResultsChanged/"
+    folder = "/home/hax/Desktop/sync_folder/P6/datasets_test/results"
     for files in os.listdir(folder):
 
         file = open(folder+files, "r+")
@@ -31,7 +31,7 @@ def changer():
         file.close()
 
 def tester():
-    rootdir = "data/trash_datasets"
+    rootdir = "/home/hax/Desktop/sync_folder/P6/datasets_test/dry_pvc_500_middle_trashbag"
 
     for subdir, dirs, files in os.walk(rootdir):
 
@@ -62,7 +62,7 @@ def tester():
 
             #Call function
             try:
-                r, error = LSC.CylinderFitting(data)
+                r, error, C, W = LSC.CylinderFitting(data)
             except:
                 continue
             time2 = time.time()
@@ -70,6 +70,10 @@ def tester():
             radii.append(r)
             errors.append(error)
             times.append(time3)
+
+            cylinder_mesh = LSC.draw_cylinder(np.asarray(W), C, r, 2)
+
+            o3d.visualization.draw_geometries([pcd, cylinder_mesh])
 
         if len(radii) > 0:
             meanR = sum(r for r in radii)/len(radii)
@@ -90,4 +94,4 @@ def tester():
             f.close()
 
 
-changer()
+tester()
