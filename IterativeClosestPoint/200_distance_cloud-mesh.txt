@@ -52,15 +52,39 @@ m = 0.026832, std = 0.018991		m = 0.026049, std = 0.019152
  
 50
 M = 0.098678, std 0.009990
+[16:01:24] [ComputeDistances] Mean distance = 0.028359 / std deviation = 0.017910
 
 100 
 m = 0.098678, std 0.009990 
+[16:02:27] [ComputeDistances] Mean distance = 0.025929 / std deviation = 0.020443
 
 500
 m = 0.076699 , std = 0.032633  
+[16:03:48] [ComputeDistances] Mean distance = 0.032819 / std deviation = 0.014569
 
 1000
 m = 0.039869, std 0.024885
+[16:04:48] [ComputeDistances] Mean distance = 0.035092 / std deviation = 0.019181
+
+
+
+500 mm vådt 
+
+50 
+[13:43:28] [ComputeDistances] Mean distance = 0.033143 / std deviation = 0.025612
+
+100
+[13:44:16] [ComputeDistances] Mean distance = 0.035048 / std deviation = 0.022937
+
+500
+
+[13:45:44] [ComputeDistances] Mean distance = 0.034292 / std deviation = 0.012488
+
+1000
+[13:40:16] [ComputeDistances] Mean distance = 0.037359 / std deviation = 0.017408
+
+
+
 
 
 
