@@ -1,66 +1,118 @@
-200 mm
+200 mm						med vand
 
 50 exp 
-mean 0.0038344 std = 0.032700
+mean 0.013165 std = 0.010360			m = 0.011053, std 0.010943	
 
-100 exp
+100 exp				
 
-mean 0.037106 std = 0.030529
+mean 0.013155 std = 0.010199			m = 0.015268, std 0.009963
 
 500 exp
 
-mean 0.026819  std = 0.022571
+mean 0.019297  std = 0.014372			m = 0.015685, std 0.010313
 
 
 1000 exp
 
-mean 0.023337 std = 0.018661
+mean 0.021653 std = 0.014566			m = 0.014946, std 0.00877
 
 
 BETON 200
 
 50
-M = 0.029771  std = 0.036370
+M = 0.010950  std 0.009407			
 
 100
-M  = 0.028183, std 0.032211
+M  = 0.008589, std 0.008956
 
 500
 
-M = 0.013964, std 0.021535
+M = 0.008246, std 0.011152
 
 1000
-M = 0.010206
+M = 0.011388, std 0.011562    
 
 
-400 mm 
+400 mm 	vådt				tørt 
 
 50 
-m = 0.097176, std = 0.015269
+m = 0.023402, std = 0.013429		m = 0.013909, std = 0.011846
 
 100
-m = 0.0173677, std 0.028367
+m = 0.021184, std = 0.011420		m = 0.015579, std = 0.012749
 
 500 
-m = 0.130364, std 0.069086
+m = 0.021569, std = 0.012454		m = 0.023937, std = 0.011481
 
 1000
-m = 0.051769, std 0.049804
+m = 0.026832, std = 0.018991		m = 0.026049, std = 0.019152
 
 
 500 mm 
  
 50
 M = 0.098678, std 0.009990
+[16:01:24] [ComputeDistances] Mean distance = 0.028359 / std deviation = 0.017910
 
 100 
 m = 0.098678, std 0.009990 
+[16:02:27] [ComputeDistances] Mean distance = 0.025929 / std deviation = 0.020443
 
 500
 m = 0.076699 , std = 0.032633  
+[16:03:48] [ComputeDistances] Mean distance = 0.032819 / std deviation = 0.014569
 
 1000
 m = 0.039869, std 0.024885
+[16:04:48] [ComputeDistances] Mean distance = 0.035092 / std deviation = 0.019181
+
+
+
+500 mm vådt 
+
+50 
+[13:43:28] [ComputeDistances] Mean distance = 0.033143 / std deviation = 0.025612
+
+100
+[13:44:16] [ComputeDistances] Mean distance = 0.035048 / std deviation = 0.022937
+
+500
+
+[13:45:44] [ComputeDistances] Mean distance = 0.034292 / std deviation = 0.012488
+
+1000
+[13:40:16] [ComputeDistances] Mean distance = 0.037359 / std deviation = 0.017408
+
+
+
+
+
+
+
+Unsigned
+
+[10:05:13] [ComputeDistances] Mean distance = 0.015619 / std deviation = 0.009267 middle
+[10:06:59] [ComputeDistances] Mean distance = 0.015306 / std deviation = 0.010627 op 
+[10:08:34] [ComputeDistances] Mean distance = 0.017134 / std deviation = 0.012458 ned 
+[10:09:42] [ComputeDistances] Mean distance = 0.021276 / std deviation = 0.020436 højre 
+[10:10:24] [ComputeDistances] Mean distance = 0.017690 / std deviation = 0.010980 venstre
+
+signed
+
+[10:11:46] [ComputeDistances] Mean distance = 0.015545 / std deviation = 0.009359 middle
+[10:12:23] [ComputeDistances] Mean distance = 0.015379 / std deviation = 0.011615 op
+[10:13:53] [ComputeDistances] Mean distance = 0.016902 / std deviation = 0.012119 ned 
+[10:16:08] [ComputeDistances] Mean distance = 0.012133 / std deviation = 0.014426 højre
+[10:10:58] [ComputeDistances] Mean distance = 0.015559 / std deviation = 0.013835 venstre
+
+
+
+
+
+
+
+
+
 
 
 
